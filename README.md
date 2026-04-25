@@ -1,41 +1,43 @@
 # Tell Me Your Day 📓
 
-Ein lokaler, privater KI-Reflexionsbegleiter. Läuft vollständig auf deinem Computer – keine Cloud, keine API-Kosten, keine Datenweitergabe.
+Hi, this is my first GitHub project. It's vibe coded.
 
-Gebaut auf **Gemma 4 E2B** – Googles aktuell leistungsfähigstes kompaktes Modell. Multimodal, kontextstark, und schnell genug für flüssige Konversation auf Consumer-Hardware. Das Setup ist explizit auf Gemma 4 E2B ausgerichtet und dort am besten getestet.
+A local, private AI reflection companion. Runs entirely on your computer — no cloud, no API costs, no data sharing.
 
-## Voraussetzungen
+Built on **Gemma 4 E2B** — Google's most capable compact model. Multimodal, strong context handling, and fast enough for fluid conversation on consumer hardware. This setup is explicitly built and tested around Gemma 4 E2B.
 
-- [Ollama](https://ollama.com) installiert und gestartet
-- Python 3.10 oder neuer
+## Requirements
+
+- [Ollama](https://ollama.com) installed and running
+- Python 3.10 or newer
 
 ## Setup
 
-1. Modelle laden:
+1. Pull the models:
 ```bash
 ollama pull gemma4:e2b
 ollama pull nomic-embed-text
 ```
 
-2. Dependencies installieren:
+2. Install dependencies:
 ```bash
 pip3 install -r requirements.txt
 ```
 
-3. App starten:
+3. Start the app:
 ```bash
 python3 -m streamlit run tellyourday.py
 ```
 
-Das war's. Die App läuft standardmäßig mit `gemma4:e2b`. Wer ein anderes Modell verwenden möchte, trägt es einfach in `config.yaml` ein:
+That's it. The app runs with `gemma4:e2b` by default. To use a different model, edit `config.yaml`:
 
 ```yaml
-chat_model: "anderes-modell"
+chat_model: "your-model-name"
 embed_model: "nomic-embed-text"
 ```
 
-> **macOS:** Verwende immer `python3 -m streamlit run` statt `streamlit run`
+> **macOS:** Always use `python3 -m streamlit run` instead of `streamlit run`
 
-## Datenschutz
+## Privacy
 
-Deine Gespräche bleiben lokal. `memory.json` und `chroma_db/` werden nicht auf GitHub hochgeladen.
+Your conversations stay local. `memory.json` and `chroma_db/` are excluded from GitHub via `.gitignore`.

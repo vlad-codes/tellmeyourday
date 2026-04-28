@@ -35,6 +35,14 @@ CHAT_MODEL  = config["chat_model"]
 EMBED_MODEL = config["embed_model"]
 
 
+def get_available_models() -> list[str]:
+    try:
+        models = ollama.list()
+        return [m["model"] for m in models["models"]]
+    except Exception:
+        return [CHAT_MODEL]
+
+
 # ─────────────────────────────────────────────
 # Embedding
 # ─────────────────────────────────────────────
@@ -367,6 +375,72 @@ def build_system_prompt(relevant_entries: list[dict]) -> dict:
 
 
 # ─────────────────────────────────────────────
+# Save logic (called from sidebar button)
+# ─────────────────────────────────────────────
+
+def run_save_flow():
+    if not st.session_state.messages:
+        st.session_state.save_warning = "No conversation to save yet."
+        return
+
+    history_text = "\n".join(
+        [f"{m['role'].capitalize()}: {m['content']}" for m in st.session_state.messages]
+    )
+    summary_prompt = (
+        f"Here is our conversation from today:\n\n{history_text}\n\n"
+        "Return exactly two things, nothing else:\n\n"
+        "TITLE: a single line, max 8 words, capturing the essence of today\n"
+        "SUMMARY: 3-4 sentences, factual, what was important and what was the mood\n\n"
+        "RULES:\n"
+        "- Summarize only today's content\n"
+        "- No connections to past topics\n"
+        "- No poetry, no life lessons\n"
+        "- Output only TITLE: and SUMMARY: labels, nothing else"
+    )
+    try:
+        summary_response = ollama.chat(
+            model=st.session_state.selected_model,
+            messages=[{"role": "user", "content": summary_prompt}],
+            options={"temperature": 0.1}
+        )
+        raw = summary_response["message"]["content"]
+
+        title = ""
+        summary_lines = []
+        in_summary = False
+        for line in raw.splitlines():
+            if line.startswith("TITLE:"):
+                title = line.replace("TITLE:", "").strip()
+                in_summary = False
+            elif line.startswith("SUMMARY:"):
+                summary_lines.append(line.replace("SUMMARY:", "").strip())
+                in_summary = True
+            elif in_summary and line.strip():
+                summary_lines.append(line.strip())
+        summary = " ".join(summary_lines)
+        if not summary:
+            summary = raw.strip()
+        if not title:
+            title = summary[:60]
+
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        chroma_ok = save_entry_to_chroma(timestamp, summary, title)
+
+        new_entry = {"timestamp": timestamp, "title": title, "summary": summary}
+        st.session_state.json_entries.append(new_entry)
+        save_memory_json(st.session_state.json_entries)
+        st.session_state.all_entries = get_all_entries()
+
+        if chroma_ok:
+            st.session_state.already_saved = True
+            st.session_state.model_changed = False
+            st.session_state.last_saved = {"title": title, "summary": summary}
+
+    except Exception as e:
+        st.session_state.save_error = f"Error generating summary: {e}"
+
+
+# ─────────────────────────────────────────────
 # Page config
 # ─────────────────────────────────────────────
 
@@ -377,7 +451,9 @@ st.set_page_config(page_title="Tell me your day", page_icon="📓", layout="cent
 # ─────────────────────────────────────────────
 
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [{
+        "role": "assistant",
+        "content": "Hey, I'm Telmi — your personal reflection companion.\n\nI'm here to listen. Just tell me what's been on your mind today — big or small, good or bad.\n\nI remember our past conversations and I'm curious how you're doing."    }]
 if "already_saved" not in st.session_state:
     st.session_state.already_saved = False
 if "json_entries" not in st.session_state:
@@ -388,6 +464,18 @@ if "cal_month" not in st.session_state:
     st.session_state.cal_month = date.today().month
 if "selected_date" not in st.session_state:
     st.session_state.selected_date = None
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = CHAT_MODEL
+if "model_changed" not in st.session_state:
+    st.session_state.model_changed = False
+if "trigger_save" not in st.session_state:
+    st.session_state.trigger_save = False
+if "save_warning" not in st.session_state:
+    st.session_state.save_warning = None
+if "save_error" not in st.session_state:
+    st.session_state.save_error = None
+if "last_saved" not in st.session_state:
+    st.session_state.last_saved = None
 
 get_collection()
 if not st.session_state.get("migration_done"):
@@ -409,6 +497,49 @@ with st.sidebar:
     if total < VECTOR_MIN_ENTRIES:
         st.caption(f"vector search active at {VECTOR_MIN_ENTRIES} ({VECTOR_MIN_ENTRIES - total} to go)")
 
+    st.divider()
+
+    # Model selector
+    available_models = get_available_models()
+    current_index = available_models.index(st.session_state.selected_model) \
+        if st.session_state.selected_model in available_models else 0
+
+    new_model = st.selectbox("Model", available_models, index=current_index)
+
+    if new_model != st.session_state.selected_model:
+        if st.session_state.messages and not st.session_state.already_saved:
+            st.session_state.model_changed = True
+        st.session_state.selected_model = new_model
+
+    if st.session_state.model_changed:
+        st.warning("Save your conversation before the new model takes effect.")
+
+    st.divider()
+
+
+    if st.session_state.already_saved:
+        st.success("Session saved.")
+        if st.button("New Session", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.already_saved = False
+            st.session_state.last_saved = None
+            st.session_state.model_changed = False
+            st.rerun()
+    else:
+        if st.button("End conversation & save", use_container_width=True):
+            st.session_state.trigger_save = True
+            st.rerun()
+
+# ─────────────────────────────────────────────
+# Handle save trigger (runs once after sidebar click)
+# ─────────────────────────────────────────────
+
+if st.session_state.trigger_save:
+    st.session_state.trigger_save = False
+    with st.spinner("Generating summary and saving..."):
+        run_save_flow()
+    st.rerun()
+
 # ─────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────
@@ -419,7 +550,7 @@ tab_chat, tab_stats = st.tabs(["Chat", "Statistics"])
 
 # ── Chat Tab ────────────────────────────────
 with tab_chat:
-
+    
     # Scrollable message container — chat_input stays below it, fixed in tab
     chat_container = st.container(height=500)
     with chat_container:
@@ -444,7 +575,7 @@ with tab_chat:
                 response_placeholder = st.empty()
                 full_response = ""
                 try:
-                    for chunk in ollama.chat(model=CHAT_MODEL, messages=messages_for_llm, stream=True):
+                    for chunk in ollama.chat(model=st.session_state.selected_model, messages=messages_for_llm, stream=True):
                         if "message" in chunk and "content" in chunk["message"]:
                             full_response += chunk["message"]["content"]
                             response_placeholder.markdown(full_response + "▌")
@@ -454,72 +585,17 @@ with tab_chat:
                     response_placeholder.empty()
                     st.error(f"Cannot reach Ollama. Is `ollama serve` running?\n\nError: {e}")
 
-    st.divider()
-
-    if st.session_state.already_saved:
-        st.success("Today's session has already been saved. Restart the app to begin a new conversation.")
-    elif st.button("End conversation & save today"):
-        if not st.session_state.messages:
-            st.warning("No conversation to save yet.")
-        else:
-            with st.spinner("Generating summary and saving..."):
-                history_text = "\n".join(
-                    [f"{m['role'].capitalize()}: {m['content']}" for m in st.session_state.messages]
-                )
-                summary_prompt = (
-                    f"Here is our conversation from today:\n\n{history_text}\n\n"
-                    "Return exactly two things, nothing else:\n\n"
-                    "TITLE: a single line, max 8 words, capturing the essence of today\n"
-                    "SUMMARY: 3-4 sentences, factual, what was important and what was the mood\n\n"
-                    "RULES:\n"
-                    "- Summarize only today's content\n"
-                    "- No connections to past topics\n"
-                    "- No poetry, no life lessons\n"
-                    "- Output only TITLE: and SUMMARY: labels, nothing else"
-                )
-                try:
-                    summary_response = ollama.chat(
-                        model=CHAT_MODEL,
-                        messages=[{"role": "user", "content": summary_prompt}],
-                        options={"temperature": 0.1}
-                    )
-                    raw = summary_response["message"]["content"]
-
-                    title = ""
-                    summary = ""
-                    summary_lines = []
-                    in_summary = False
-                    for line in raw.splitlines():
-                        if line.startswith("TITLE:"):
-                            title = line.replace("TITLE:", "").strip()
-                            in_summary = False
-                        elif line.startswith("SUMMARY:"):
-                            summary_lines.append(line.replace("SUMMARY:", "").strip())
-                            in_summary = True
-                        elif in_summary and line.strip():
-                            summary_lines.append(line.strip())
-                    summary = " ".join(summary_lines)
-                    if not summary:
-                        summary = raw.strip()
-                    if not title:
-                        title = summary[:60]
-
-                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    chroma_ok = save_entry_to_chroma(timestamp, summary, title)
-
-                    new_entry = {"timestamp": timestamp, "title": title, "summary": summary}
-                    st.session_state.json_entries.append(new_entry)
-                    save_memory_json(st.session_state.json_entries)
-                    st.session_state.all_entries = get_all_entries()
-
-                    if chroma_ok:
-                        st.session_state.already_saved = True
-                        st.success("Saved successfully!")
-                        st.info(f"**{title}**\n\n{summary}")
-
-                except Exception as e:
-                    st.error(f"Error generating summary: {e}")
-
+    # Feedback messages from save flow
+    if st.session_state.save_warning:
+        st.warning(st.session_state.save_warning)
+        st.session_state.save_warning = None
+    if st.session_state.save_error:
+        st.error(st.session_state.save_error)
+        st.session_state.save_error = None
+    if st.session_state.already_saved and st.session_state.last_saved:
+        ls = st.session_state.last_saved
+        st.success("Saved successfully!")
+        st.info(f"**{ls['title']}**\n\n{ls['summary']}")
 
 # ── Statistics Tab ───────────────────────────
 with tab_stats:

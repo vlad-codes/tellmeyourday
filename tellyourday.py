@@ -12,9 +12,10 @@ from datetime import datetime, date, timedelta
 # Config
 # ─────────────────────────────────────────────
 
-MEMORY_FILE = "memory.json"
-CHROMA_DIR  = "chroma_db"
-COLLECTION  = "memory"
+MEMORY_FILE  = "memory.json"
+PROFILE_FILE = "profile.json"
+CHROMA_DIR   = "chroma_db"
+COLLECTION   = "memory"
 
 VECTOR_MIN_ENTRIES = 15
 VECTOR_TOP_K       = 5
@@ -129,7 +130,7 @@ def calculate_streaks(entries: list[dict]) -> tuple[int, int]:
 
 
 # ─────────────────────────────────────────────
-# Calendar (Plotly)
+# Calendar (Plotly) — compact for sidebar
 # ─────────────────────────────────────────────
 
 def build_calendar(entries: list[dict], year: int, month: int):
@@ -141,7 +142,7 @@ def build_calendar(entries: list[dict], year: int, month: int):
 
     today = date.today()
     cal = calendar.monthcalendar(year, month)
-    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    day_names = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
 
     x_vals, y_vals, colors, hover_texts, custom_dates, day_numbers = [], [], [], [], [], []
     num_weeks = len(cal)
@@ -189,13 +190,13 @@ def build_calendar(entries: list[dict], year: int, month: int):
         mode="markers+text",
         marker=dict(
             symbol="square",
-            size=38,
+            size=26,
             color=colors,
             line=dict(width=0),
         ),
         text=day_numbers,
         textposition="middle center",
-        textfont=dict(size=13, color="#e5e7eb"),
+        textfont=dict(size=10, color="#e5e7eb"),
         hovertext=hover_texts,
         hovertemplate="%{hovertext}<extra></extra>",
         customdata=custom_dates,
@@ -206,15 +207,15 @@ def build_calendar(entries: list[dict], year: int, month: int):
         y=[num_weeks] * 7,
         mode="text",
         text=day_names,
-        textfont=dict(size=11, color="#6b7280"),
+        textfont=dict(size=9, color="#6b7280"),
         hoverinfo="skip",
     ))
 
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=10, b=0),
-        height=300,
+        margin=dict(l=0, r=0, t=4, b=0),
+        height=200,
         showlegend=False,
         xaxis=dict(visible=False, range=[-0.6, 6.6], fixedrange=True),
         yaxis=dict(visible=False, range=[-0.6, num_weeks + 0.6], fixedrange=True),
@@ -339,10 +340,92 @@ def save_memory_json(entries: list) -> bool:
 
 
 # ─────────────────────────────────────────────
+# Profile — Tell me your mind
+# ─────────────────────────────────────────────
+
+def load_profile() -> str:
+    if not os.path.exists(PROFILE_FILE):
+        return ""
+    try:
+        with open(PROFILE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("notes", "")
+    except Exception:
+        return ""
+
+
+def save_profile(notes: str) -> bool:
+    try:
+        with open(PROFILE_FILE, "w", encoding="utf-8") as f:
+            json.dump({
+                "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "notes": notes
+            }, f, ensure_ascii=False, indent=4)
+        return True
+    except Exception as e:
+        st.error(f"Error saving {PROFILE_FILE}: {e}")
+        return False
+
+
+def update_profile_from_session(history_text: str, summary: str) -> str | None:
+    existing = load_profile()
+    profile_context = (
+        f"EXISTING PROFILE NOTES:\n{existing}\n\n"
+        if existing else
+        "EXISTING PROFILE NOTES: None yet.\n\n"
+    )
+    prompt = (
+        "You are taking factual notes after a therapy session. "
+        "Your only job is to record what the user explicitly said or directly demonstrated — nothing else.\n\n"
+        f"{profile_context}"
+        f"SESSION SUMMARY:\n{summary}\n\n"
+        f"FULL SESSION TRANSCRIPT:\n{history_text}\n\n"
+        "Write down observations from this session that are NOT already in the existing profile.\n\n"
+        "STRICT EVIDENCE RULE:\n"
+        "Every single observation you write must be directly traceable to something the user "
+        "said or did in the transcript above. If you cannot point to a specific line or statement "
+        "that supports it, do not write it. No exceptions.\n\n"
+        "WHAT TO NOTE (only if the user explicitly expressed it):\n"
+        "- Things the user stated as facts about their life, relationships, or situation\n"
+        "- Emotions or reactions the user named themselves\n"
+        "- Patterns or behaviors the user described themselves doing\n"
+        "- Beliefs or values the user expressed in their own words\n"
+        "- Conflicts or tensions the user explicitly mentioned\n\n"
+        "STRICTLY FORBIDDEN:\n"
+        "- Psychological interpretations not stated by the user ('You seem to fear...')\n"
+        "- Inferences about underlying causes, motives, or subconscious patterns\n"
+        "- Assumptions about what the user 'really' feels or believes\n"
+        "- Filling gaps with plausible-sounding psychology\n"
+        "- Anything the user did not say — even if it seems likely\n\n"
+        "FORMAT:\n"
+        "- Write in second person: 'You said...', 'You described...', 'You mentioned...'\n"
+        "- Plain text paragraphs only — no bullet points, no headers\n"
+        "- Only write what is genuinely new — do not repeat anything already in the profile\n"
+        "- If the conversation is too short or too shallow to support any observation "
+        "(e.g. only one or two messages, or only small talk), output exactly: NO_NEW_OBSERVATIONS\n"
+        "- If there is nothing new to record, output exactly: NO_NEW_OBSERVATIONS\n"
+        "- Output only the new notes, no preamble, no labels"
+    )
+    try:
+        response = ollama.chat(
+            model=st.session_state.selected_model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.2}
+        )
+        raw = response["message"]["content"].strip()
+        if not raw or raw == "NO_NEW_OBSERVATIONS":
+            return None
+        return raw
+    except Exception as e:
+        st.error(f"Error updating profile: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────
 # System prompt
 # ─────────────────────────────────────────────
 
-def build_system_prompt(relevant_entries: list[dict]) -> dict:
+def build_system_prompt(relevant_entries: list[dict], mode: str = "day") -> dict:
     if relevant_entries:
         memory_text = "\n\n".join(
             [f"[{e['timestamp']}]\n{e['summary']}" for e in relevant_entries]
@@ -350,55 +433,109 @@ def build_system_prompt(relevant_entries: list[dict]) -> dict:
     else:
         memory_text = "No previous conversations on record."
 
-    return {
-        "role": "system",
-        "content": (
-            "You are a calm, honest reflection companion. "
-            "You know the user from past conversations.\n\n"
-            f"RELEVANT MEMORIES (semantically matched to current topic):\n{memory_text}\n\n"
-            "BEHAVIORAL RULES:\n"
-            "1. If the user is simply sharing (no explicit question mark): "
-            "validate and mirror what they said. Make no suggestions and ask NO follow-up questions.\n"
-            "2. If the user explicitly asks for your opinion: "
-            "be direct, unfiltered, and concrete. No beating around the bush.\n"
-            "3. If the user is looking for help or advice: "
-            "encourage them concretely and action-oriented.\n"
-            "4. Only reference memories when there is a direct, natural connection "
-            "to the current topic. Never force connections.\n\n"
-            "FORBIDDEN:\n"
-            "- 'As an AI I have no feelings' or similar distancing phrases\n"
-            "- Endless follow-up questions (one maximum, only if truly necessary)\n"
-            "- Hollow empathy phrases like 'That sounds really challenging for you'\n"
-            "- Sweeping philosophical conclusions drawn from small everyday things"
+    if mode == "day":
+        return {
+            "role": "system",
+            "content": (
+                "You are Telmi, a calm personal reflection companion. "
+                "You know the user from past conversations.\n\n"
+                f"RELEVANT SESSION MEMORIES:\n{memory_text}\n\n"
+                "BEHAVIORAL RULES:\n"
+                "1. If the user is simply sharing (no explicit question): "
+                "validate and reflect back. No advice, no follow-up questions.\n"
+                "2. If the user explicitly asks for your opinion: be direct and concrete.\n"
+                "3. If the user wants help or advice: be practical and action-oriented.\n"
+                "4. Only reference memories when there is a direct, natural connection.\n\n"
+                "FORBIDDEN:\n"
+                "- 'As an AI I have no feelings' or similar distancing phrases\n"
+                "- Hollow empathy phrases like 'That sounds really challenging for you'\n"
+                "- Unsolicited advice or questions\n"
+                "- Sweeping philosophical conclusions drawn from small everyday things"
+            )
+        }
+    else:  # mind
+        profile_text = load_profile()
+        profile_section = (
+            f"USER PROFILE (cumulative therapist notes):\n{profile_text}"
+            if profile_text else
+            "USER PROFILE: No profile yet — this is an early session."
         )
-    }
+        return {
+            "role": "system",
+            "content": (
+                "You are Telmi, acting as a skilled psychotherapist. "
+                "You have worked with this user across multiple sessions.\n\n"
+                f"{profile_section}\n\n"
+                f"RELEVANT SESSION MEMORIES:\n{memory_text}\n\n"
+                "YOUR APPROACH:\n"
+                "1. Ask sharp, targeted questions that push the user to examine their own thinking.\n"
+                "2. Identify and name patterns — emotional, behavioral, cognitive — as you notice them.\n"
+                "3. Don't just mirror. Reflect with interpretation: "
+                "'It sounds like you believe X — is that accurate?'\n"
+                "4. Connect what the user says to known patterns from the profile when relevant.\n"
+                "5. Gently challenge contradictions or avoidance without being confrontational.\n"
+                "6. One question per response — focused, not a list.\n\n"
+                "FORBIDDEN:\n"
+                "- 'As an AI I have no feelings' or similar distancing phrases\n"
+                "- Generic validation without substance\n"
+                "- Multiple questions in one response\n"
+                "- Diagnosing or labeling the user with clinical terms"
+            )
+        }
 
 
 # ─────────────────────────────────────────────
-# Save logic (called from sidebar button)
+# Intro messages per mode
 # ─────────────────────────────────────────────
 
-def run_save_flow():
-    has_user_messages = any(m["role"] == "user" for m in st.session_state.messages)
-    if not has_user_messages:
+def get_intro_message(mode: str) -> str:
+    if mode == "day":
+        return (
+            "Hey, I'm Telmi — your personal reflection companion.\n\n"
+            "I'm here to listen. Just tell me what's been on your mind today — "
+            "big or small, good or bad.\n\n"
+            "I remember our past conversations and I'm curious how you're doing."
+        )
+    else:
+        return (
+            "Hey, I'm Telmi — let's go a little deeper today.\n\n"
+            "What's been on your mind? Pick something specific — "
+            "a situation, a feeling, a thought you keep coming back to.\n\n"
+            "We'll look at it together."
+        )
+
+
+# ─────────────────────────────────────────────
+# Save logic
+# ─────────────────────────────────────────────
+
+def run_save_flow(mode: str):
+    msgs = st.session_state.messages_day if mode == "day" else st.session_state.messages_mind
+    user_messages = [m for m in msgs if m["role"] == "user"]
+
+    if not user_messages:
         st.session_state.save_warning = "No conversation to save yet."
         return
 
+    convo = msgs[1:] if msgs and msgs[0]["role"] == "assistant" else msgs
     history_text = "\n".join(
-        [f"{m['role'].capitalize()}: {m['content']}" for m in st.session_state.messages]
+        [f"{m['role'].capitalize()}: {m['content']}" for m in convo]
     )
+
     summary_prompt = (
         f"Here is today's conversation:\n\n{history_text}\n\n"
         "Return exactly two things, nothing else:\n\n"
         "TITLE: a single line, max 8 words, capturing what was on the user's mind today\n"
-        "SUMMARY: 3-4 sentences written from Telmi's perspective about the USER — "
-        "what they shared, how they felt, what mattered to them. "
+        "SUMMARY: written from Telmi's perspective about the USER. "
         "Write 'You' when referring to the user. Never describe the conversation itself. "
         "Never mention Telmi. Only what the user brought up and their mood.\n\n"
         "RULES:\n"
         "- Focus entirely on the user, not the exchange\n"
         "- No meta-commentary like 'the conversation was about'\n"
         "- No poetry, no life lessons\n"
+        "- If the conversation is very short or contains only greetings, write a minimal honest "
+        "summary of exactly what happened — e.g. 'You stopped by briefly and said hi.' "
+        "Do not invent emotions or assume context that isn't there. Just describe what is literally present.\n"
         "- Output only TITLE: and SUMMARY: labels, nothing else"
     )
     try:
@@ -436,9 +573,24 @@ def run_save_flow():
         st.session_state.all_entries = get_all_entries()
 
         if chroma_ok:
-            st.session_state.already_saved = True
             st.session_state.model_changed = False
-            st.session_state.last_saved = {"title": title, "summary": summary}
+            saved = {"title": title, "summary": summary, "profile_update": None}
+            if mode == "day":
+                st.session_state.already_saved_day = True
+                st.session_state.last_saved_day = saved
+            else:
+                st.session_state.already_saved_mind = True
+                st.session_state.last_saved_mind = saved
+
+        if mode == "mind":
+            new_observations = update_profile_from_session(history_text, summary)
+            if new_observations:
+                existing = load_profile()
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                updated = (existing + f"\n\n[{ts}]\n" + new_observations) if existing else new_observations
+                save_profile(updated)
+                if st.session_state.last_saved_mind:
+                    st.session_state.last_saved_mind["profile_update"] = new_observations
 
     except Exception as e:
         st.session_state.save_error = f"Error generating summary: {e}"
@@ -448,18 +600,26 @@ def run_save_flow():
 # Page config
 # ─────────────────────────────────────────────
 
-st.set_page_config(page_title="Tell me your day", page_icon="📓", layout="centered")
+st.set_page_config(page_title="Telmi", page_icon="📓", layout="centered")
 
 # ─────────────────────────────────────────────
 # Session state
 # ─────────────────────────────────────────────
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{
-        "role": "assistant",
-        "content": "Hey, I'm Telmi — your personal reflection companion.\n\nI'm here to listen. Just tell me what's been on your mind today — big or small, good or bad.\n\nI remember our past conversations and I'm curious how you're doing."    }]
-if "already_saved" not in st.session_state:
-    st.session_state.already_saved = False
+if "app_mode" not in st.session_state:
+    st.session_state.app_mode = "day"
+if "messages_day" not in st.session_state:
+    st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
+if "messages_mind" not in st.session_state:
+    st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
+if "already_saved_day" not in st.session_state:
+    st.session_state.already_saved_day = False
+if "already_saved_mind" not in st.session_state:
+    st.session_state.already_saved_mind = False
+if "last_saved_day" not in st.session_state:
+    st.session_state.last_saved_day = None
+if "last_saved_mind" not in st.session_state:
+    st.session_state.last_saved_mind = None
 if "json_entries" not in st.session_state:
     st.session_state.json_entries = load_memory_json()
 if "cal_year" not in st.session_state:
@@ -478,8 +638,6 @@ if "save_warning" not in st.session_state:
     st.session_state.save_warning = None
 if "save_error" not in st.session_state:
     st.session_state.save_error = None
-if "last_saved" not in st.session_state:
-    st.session_state.last_saved = None
 
 get_collection()
 if not st.session_state.get("migration_done"):
@@ -490,11 +648,22 @@ if "all_entries" not in st.session_state:
     st.session_state.all_entries = get_all_entries()
 
 # ─────────────────────────────────────────────
+# Handle save trigger (runs before sidebar renders)
+# ─────────────────────────────────────────────
+
+if st.session_state.trigger_save:
+    st.session_state.trigger_save = False
+    mode = st.session_state.app_mode
+    label = "Saving and updating your profile..." if mode == "mind" else "Generating summary and saving..."
+    with st.spinner(label):
+        run_save_flow(mode)
+    st.rerun()
+
+# ─────────────────────────────────────────────
 # Sidebar
 # ─────────────────────────────────────────────
 
 total = count_entries()
-mode = "linear mode" if total < VECTOR_MIN_ENTRIES else "semantic mode"
 
 with st.sidebar:
     # Model selector
@@ -505,8 +674,12 @@ with st.sidebar:
     new_model = st.selectbox("Model", available_models, index=current_index)
 
     if new_model != st.session_state.selected_model:
-        has_user_messages = any(m["role"] == "user" for m in st.session_state.messages)
-        if has_user_messages and not st.session_state.already_saved:
+        has_unsaved = (
+            (any(m["role"] == "user" for m in st.session_state.messages_day) and not st.session_state.already_saved_day)
+            or
+            (any(m["role"] == "user" for m in st.session_state.messages_mind) and not st.session_state.already_saved_mind)
+        )
+        if has_unsaved:
             st.session_state.model_changed = True
         st.session_state.selected_model = new_model
 
@@ -515,124 +688,50 @@ with st.sidebar:
 
     st.divider()
 
+    # Save / New Session — mode-aware
+    mode = st.session_state.app_mode
+    already_saved = st.session_state.already_saved_day if mode == "day" else st.session_state.already_saved_mind
 
-    if st.session_state.already_saved:
+    if already_saved:
         st.success("Session saved.")
         if st.button("New Session", use_container_width=True):
-            st.session_state.messages = [{
-                "role": "assistant",
-                "content": "Hey, I'm Telmi — your personal reflection companion.\n\nI'm here to listen, not to judge. Just tell me what's been on your mind today — big or small, good or bad.\n\nI remember our past conversations and I'm curious how you're doing."
-            }]
-            st.session_state.already_saved = False
-            st.session_state.last_saved = None
+            if mode == "day":
+                st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
+                st.session_state.already_saved_day = False
+                st.session_state.last_saved_day = None
+            else:
+                st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
+                st.session_state.already_saved_mind = False
+                st.session_state.last_saved_mind = None
             st.session_state.model_changed = False
             st.rerun()
     else:
         if st.button("End conversation & save", use_container_width=True):
             st.session_state.trigger_save = True
             st.rerun()
-    st.divider()
-    st.caption("""
-**How it works**
 
-Type freely — there's no right or wrong way to start. Just write what's on your mind.
-
-When you're done, hit **End conversation & save**. Your session gets summarized and stored locally — no cloud, no data sharing.
-
-To switch models, use the dropdown above. Start a **New Session** afterwards so the new model takes effect cleanly.
-
-Your conversation history is used to personalize responses over time.
-""")
-    
-    st.divider()
-    st.caption(f"{total} memories stored")
-    if total < VECTOR_MIN_ENTRIES:
-        st.caption(f"Smart search activates at {VECTOR_MIN_ENTRIES} memories — {VECTOR_MIN_ENTRIES - total} to go.")
-
-# ─────────────────────────────────────────────
-# Handle save trigger (runs once after sidebar click)
-# ─────────────────────────────────────────────
-
-if st.session_state.trigger_save:
-    st.session_state.trigger_save = False
-    with st.spinner("Generating summary and saving..."):
-        run_save_flow()
-    st.rerun()
-
-# ─────────────────────────────────────────────
-# Main
-# ─────────────────────────────────────────────
-
-st.title("Tell me your day 📓")
-
-tab_chat, tab_stats = st.tabs(["Chat", "Statistics"])
-
-# ── Chat Tab ────────────────────────────────
-with tab_chat:
-    
-    # Scrollable message container — chat_input stays below it, fixed in tab
-    chat_container = st.container(height=500)
-    with chat_container:
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
-
-    # Chat input — inside tab, renders below container, not floating
-    if user_input := st.chat_input("How was your day?"):
-        st.session_state.messages.append({"role": "user", "content": user_input})
-
-        with chat_container:
-            with st.chat_message("user"):
-                st.markdown(user_input)
-
-        relevant = get_relevant_entries(user_input)
-        system_prompt = build_system_prompt(relevant)
-        messages_for_llm = [system_prompt] + st.session_state.messages
-
-        with chat_container:
-            with st.chat_message("assistant"):
-                response_placeholder = st.empty()
-                full_response = ""
-                try:
-                    for chunk in ollama.chat(model=st.session_state.selected_model, messages=messages_for_llm, stream=True):
-                        if "message" in chunk and "content" in chunk["message"]:
-                            full_response += chunk["message"]["content"]
-                            response_placeholder.markdown(full_response + "▌")
-                    response_placeholder.markdown(full_response)
-                    st.session_state.messages.append({"role": "assistant", "content": full_response})
-                except Exception as e:
-                    response_placeholder.empty()
-                    st.error(f"Cannot reach Ollama. Is `ollama serve` running?\n\nError: {e}")
-
-    # Feedback messages from save flow
     if st.session_state.save_warning:
         st.warning(st.session_state.save_warning)
         st.session_state.save_warning = None
     if st.session_state.save_error:
         st.error(st.session_state.save_error)
         st.session_state.save_error = None
-    if st.session_state.already_saved and st.session_state.last_saved:
-        ls = st.session_state.last_saved
-        st.success("Saved successfully!")
-        st.info(f"**{ls['title']}**\n\n{ls['summary']}")
-
-# ── Statistics Tab ───────────────────────────
-with tab_stats:
-    all_entries = st.session_state.all_entries
-    current_streak, longest_streak = calculate_streaks(all_entries)
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("current streak", f"{current_streak} days")
-    with col2:
-        st.metric("longest streak", f"{longest_streak} days")
 
     st.divider()
 
+    # Streak metrics
+    all_entries = st.session_state.all_entries
+    current_streak, longest_streak = calculate_streaks(all_entries)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Streak", f"{current_streak}d")
+    with col2:
+        st.metric("Longest", f"{longest_streak}d")
+
     # Month navigation
-    nav_col1, nav_col2, nav_col3 = st.columns([1, 3, 1])
-    with nav_col1:
-        if st.button("←", use_container_width=True):
+    nav1, nav2, nav3 = st.columns([1, 3, 1])
+    with nav1:
+        if st.button("←", use_container_width=True, key="cal_prev"):
             if st.session_state.cal_month == 1:
                 st.session_state.cal_month = 12
                 st.session_state.cal_year -= 1
@@ -640,14 +739,14 @@ with tab_stats:
                 st.session_state.cal_month -= 1
             st.session_state.selected_date = None
             st.rerun()
-    with nav_col2:
-        month_name = date(st.session_state.cal_year, st.session_state.cal_month, 1).strftime("%B %Y")
+    with nav2:
+        month_label = date(st.session_state.cal_year, st.session_state.cal_month, 1).strftime("%b %Y")
         st.markdown(
-            f"<p style='text-align:center;margin:0;padding:6px 0;font-size:16px;'>{month_name}</p>",
+            f"<p style='text-align:center;margin:0;padding:4px 0;font-size:13px;'>{month_label}</p>",
             unsafe_allow_html=True
         )
-    with nav_col3:
-        if st.button("→", use_container_width=True):
+    with nav3:
+        if st.button("→", use_container_width=True, key="cal_next"):
             if st.session_state.cal_month == 12:
                 st.session_state.cal_month = 1
                 st.session_state.cal_year += 1
@@ -678,8 +777,103 @@ with tab_stats:
     if st.session_state.selected_date:
         sd = st.session_state.selected_date
         if sd in entry_map:
-            st.divider()
             st.caption(sd)
             if entry_map[sd]["title"]:
-                st.markdown(f"**{entry_map[sd]['title']}**")
-            st.write(entry_map[sd]["summary"])
+                st.caption(f"**{entry_map[sd]['title']}**")
+            with st.expander("Read entry"):
+                st.write(entry_map[sd]["summary"])
+
+    st.divider()
+    st.caption("""
+**How it works**
+
+Type freely — there's no right or wrong way to start. Just write what's on your mind.
+
+When you're done, hit **End conversation & save**. Your session gets summarized and stored locally — no cloud, no data sharing.
+
+To switch models, use the dropdown above. Start a **New Session** afterwards so the new model takes effect cleanly.
+
+Your conversation history is used to personalize responses over time.
+""")
+
+    st.divider()
+    st.caption(f"{total} memories stored")
+    if total < VECTOR_MIN_ENTRIES:
+        st.caption(f"Smart search activates at {VECTOR_MIN_ENTRIES} memories — {VECTOR_MIN_ENTRIES - total} to go.")
+
+# ─────────────────────────────────────────────
+# Main — two mode tabs
+# ─────────────────────────────────────────────
+
+tab_day, tab_mind = st.tabs(["📓 Tell me your day", "🧠 Tell me your mind"])
+
+
+def render_chat(mode: str, messages_key: str, input_placeholder: str, input_key: str,
+                already_saved_key: str, last_saved_key: str):
+    msgs = getattr(st.session_state, messages_key)
+
+    chat_container = st.container(height=500)
+    with chat_container:
+        for msg in msgs:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+    if user_input := st.chat_input(input_placeholder, key=input_key):
+        st.session_state.app_mode = mode
+        msgs.append({"role": "user", "content": user_input})
+
+        with chat_container:
+            with st.chat_message("user"):
+                st.markdown(user_input)
+
+        relevant = get_relevant_entries(user_input)
+        system_prompt = build_system_prompt(relevant, mode)
+        messages_for_llm = [system_prompt] + msgs
+
+        with chat_container:
+            with st.chat_message("assistant"):
+                response_placeholder = st.empty()
+                full_response = ""
+                try:
+                    for chunk in ollama.chat(
+                        model=st.session_state.selected_model,
+                        messages=messages_for_llm,
+                        stream=True
+                    ):
+                        if "message" in chunk and "content" in chunk["message"]:
+                            full_response += chunk["message"]["content"]
+                            response_placeholder.markdown(full_response + "▌")
+                    response_placeholder.markdown(full_response)
+                    msgs.append({"role": "assistant", "content": full_response})
+                except Exception as e:
+                    response_placeholder.empty()
+                    st.error(f"Cannot reach Ollama. Is `ollama serve` running?\n\nError: {e}")
+
+    already_saved = getattr(st.session_state, already_saved_key)
+    last_saved = getattr(st.session_state, last_saved_key)
+    if already_saved and last_saved:
+        st.success("Saved successfully!")
+        st.info(f"**{last_saved['title']}**\n\n{last_saved['summary']}")
+        if last_saved.get("profile_update"):
+            st.info(f"**Profile updated:**\n\n{last_saved['profile_update']}")
+
+
+with tab_day:
+    render_chat(
+        mode="day",
+        messages_key="messages_day",
+        input_placeholder="How was your day?",
+        input_key="input_day",
+        already_saved_key="already_saved_day",
+        last_saved_key="last_saved_day",
+    )
+
+with tab_mind:
+    render_chat(
+        mode="mind",
+        messages_key="messages_mind",
+        input_placeholder="What's on your mind?",
+        input_key="input_mind",
+        already_saved_key="already_saved_mind",
+        last_saved_key="last_saved_mind",
+    )

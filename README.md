@@ -2,6 +2,10 @@
 
 *Tell me your day. Tell me your mind.*
 
+![Onboarding](screenshots/onboarding_model-download.png)
+![Tell me your day](screenshots/yourday.png)
+![Tell me your mind](screenshots/yourmind.png)
+
 Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 
 Telmi is an AI journaling companion that runs entirely on your laptop. Talk about your day. Work through what's on your mind. Telmi listens, remembers, and gets better at knowing you — without sending a single word to a server.

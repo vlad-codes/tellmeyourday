@@ -1,6 +1,5 @@
 import os
 import json
-import yaml
 import calendar
 import streamlit as st
 import ollama
@@ -9,39 +8,44 @@ import plotly.graph_objects as go
 from datetime import datetime, date, timedelta
 
 # ─────────────────────────────────────────────
-# Config
+# Constants
 # ─────────────────────────────────────────────
 
 MEMORY_FILE  = "memory.json"
 PROFILE_FILE = "profile.json"
 CHROMA_DIR   = "chroma_db"
 COLLECTION   = "memory"
+EMBED_MODEL  = "nomic-embed-text"
 
 VECTOR_MIN_ENTRIES = 15
 VECTOR_TOP_K       = 5
 
+ONBOARDING_MODELS = [
+    ("8 GB", [
+        ("gemma4:e2b",    "Google's efficient 2B model. Fast and lightweight."),
+        ("llama3.2:3b",   "Meta's compact 3B model. Snappy and capable."),
+    ]),
+    ("16 GB", [
+        ("llama3.1:8b",   "Meta's 8B model. Solid quality for reflection and conversation."),
+        ("mistral:7b",    "Mistral's 7B model. Sharp reasoning, great follow-up questions."),
+    ]),
+    ("32 GB+", [
+        ("llama3.1:70b",  "Meta's full 70B model. Deep, nuanced, highly capable."),
+        ("qwen2.5:32b",   "Alibaba's 32B model. Excellent for structured thought."),
+    ]),
+]
 
-def load_config() -> dict:
-    defaults = {"chat_model": "gemma4:e2b", "embed_model": "nomic-embed-text"}
-    if not os.path.exists("config.yaml"):
-        return defaults
-    try:
-        with open("config.yaml", "r") as f:
-            return {**defaults, **yaml.safe_load(f)}
-    except Exception:
-        return defaults
 
-config      = load_config()
-CHAT_MODEL  = config["chat_model"]
-EMBED_MODEL = config["embed_model"]
-
+# ─────────────────────────────────────────────
+# Models
+# ─────────────────────────────────────────────
 
 def get_available_models() -> list[str]:
     try:
         models = ollama.list()
         return [m["model"] for m in models["models"]]
     except Exception:
-        return [CHAT_MODEL]
+        return []
 
 
 # ─────────────────────────────────────────────
@@ -107,7 +111,6 @@ def calculate_streaks(entries: list[dict]) -> tuple[int, int]:
         return 0, 0
 
     today = date.today()
-
     current = 0
     check = today
     for d in reversed(days):
@@ -153,74 +156,40 @@ def build_calendar(entries: list[dict], year: int, month: int):
             y = num_weeks - 1 - week_idx
 
             if day == 0:
-                x_vals.append(x)
-                y_vals.append(y)
-                colors.append("rgba(0,0,0,0)")
-                hover_texts.append("")
-                custom_dates.append("")
-                day_numbers.append("")
+                x_vals.append(x); y_vals.append(y)
+                colors.append("rgba(0,0,0,0)"); hover_texts.append("")
+                custom_dates.append(""); day_numbers.append("")
                 continue
 
             ds = f"{year:04d}-{month:02d}-{day:02d}"
-            is_today = (date(year, month, day) == today)
-            has_entry = ds in entry_map
+            is_today   = (date(year, month, day) == today)
+            has_entry  = ds in entry_map
+            color      = "#a78bfa" if has_entry else ("#374151" if is_today else "#1e1e1e")
+            title      = entry_map[ds]["title"] if has_entry else ""
+            hover      = f"{ds}<br>{title}" if title else ds
 
-            if has_entry:
-                color = "#a78bfa"
-            elif is_today:
-                color = "#374151"
-            else:
-                color = "#1e1e1e"
-
-            title = entry_map[ds]["title"] if has_entry else ""
-            hover = f"{ds}<br>{title}" if title else ds
-
-            x_vals.append(x)
-            y_vals.append(y)
-            colors.append(color)
-            hover_texts.append(hover)
-            custom_dates.append(ds)
-            day_numbers.append(str(day))
+            x_vals.append(x); y_vals.append(y); colors.append(color)
+            hover_texts.append(hover); custom_dates.append(ds); day_numbers.append(str(day))
 
     fig = go.Figure()
-
     fig.add_trace(go.Scatter(
-        x=x_vals,
-        y=y_vals,
-        mode="markers+text",
-        marker=dict(
-            symbol="square",
-            size=26,
-            color=colors,
-            line=dict(width=0),
-        ),
-        text=day_numbers,
-        textposition="middle center",
+        x=x_vals, y=y_vals, mode="markers+text",
+        marker=dict(symbol="square", size=26, color=colors, line=dict(width=0)),
+        text=day_numbers, textposition="middle center",
         textfont=dict(size=10, color="#e5e7eb"),
-        hovertext=hover_texts,
-        hovertemplate="%{hovertext}<extra></extra>",
+        hovertext=hover_texts, hovertemplate="%{hovertext}<extra></extra>",
         customdata=custom_dates,
     ))
-
     fig.add_trace(go.Scatter(
-        x=list(range(7)),
-        y=[num_weeks] * 7,
-        mode="text",
-        text=day_names,
-        textfont=dict(size=9, color="#6b7280"),
-        hoverinfo="skip",
+        x=list(range(7)), y=[num_weeks] * 7, mode="text",
+        text=day_names, textfont=dict(size=9, color="#6b7280"), hoverinfo="skip",
     ))
-
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=0, r=0, t=4, b=0),
-        height=200,
-        showlegend=False,
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(l=0, r=0, t=4, b=0), height=200, showlegend=False,
         xaxis=dict(visible=False, range=[-0.6, 6.6], fixedrange=True),
         yaxis=dict(visible=False, range=[-0.6, num_weeks + 0.6], fixedrange=True),
     )
-
     return fig, entry_map
 
 
@@ -239,16 +208,12 @@ def migrate_json_to_chroma(entries: list) -> None:
         if entry_id in existing_ids:
             continue
         embedding = get_embedding(entry["summary"])
-        metadata = {
-            "timestamp": entry["timestamp"],
-            "title":     entry.get("title", "")
-        }
+        metadata = {"timestamp": entry["timestamp"], "title": entry.get("title", "")}
         if embedding:
             collection.add(ids=[entry_id], embeddings=[embedding],
                            documents=[entry["summary"]], metadatas=[metadata])
         else:
-            collection.add(ids=[entry_id], documents=[entry["summary"]],
-                           metadatas=[metadata])
+            collection.add(ids=[entry_id], documents=[entry["summary"]], metadatas=[metadata])
         migrated += 1
     if migrated:
         st.toast(f"{migrated} older entries migrated into vector database.")
@@ -267,8 +232,7 @@ def save_entry_to_chroma(timestamp: str, summary: str, title: str) -> bool:
             collection.add(ids=[timestamp], embeddings=[embedding],
                            documents=[summary], metadatas=[metadata])
         else:
-            collection.add(ids=[timestamp], documents=[summary],
-                           metadatas=[metadata])
+            collection.add(ids=[timestamp], documents=[summary], metadatas=[metadata])
         return True
     except Exception as e:
         st.error(f"ChromaDB error while saving: {e}")
@@ -370,9 +334,8 @@ def save_profile(notes: str) -> bool:
 def update_profile_from_session(history_text: str, summary: str) -> str | None:
     existing = load_profile()
     profile_context = (
-        f"EXISTING PROFILE NOTES:\n{existing}\n\n"
-        if existing else
-        "EXISTING PROFILE NOTES: None yet.\n\n"
+        f"EXISTING PROFILE NOTES:\n{existing}\n\n" if existing
+        else "EXISTING PROFILE NOTES: None yet.\n\n"
     )
     prompt = (
         "You are taking factual notes after a therapy session. "
@@ -485,7 +448,7 @@ def build_system_prompt(relevant_entries: list[dict], mode: str = "day") -> dict
 
 
 # ─────────────────────────────────────────────
-# Intro messages per mode
+# Intro messages
 # ─────────────────────────────────────────────
 
 def get_intro_message(mode: str) -> str:
@@ -597,216 +560,85 @@ def run_save_flow(mode: str):
 
 
 # ─────────────────────────────────────────────
-# Page config
+# Onboarding
 # ─────────────────────────────────────────────
 
-st.set_page_config(page_title="Telmi", page_icon="📓", layout="centered")
+def render_onboarding():
+    available = get_available_models()
+    if st.query_params.get("onboarding") == "1":
+        available = []
 
-# ─────────────────────────────────────────────
-# Session state
-# ─────────────────────────────────────────────
+    # If a download was triggered, run it now
+    if st.session_state.downloading_model:
+        model = st.session_state.downloading_model
+        st.markdown(f"### Downloading {model}")
+        status_el    = st.empty()
+        progress_bar = st.progress(0.0)
+        status_el.caption("Starting download...")
+        try:
+            for chunk in ollama.pull(model, stream=True):
+                status    = chunk.get("status", "")
+                completed = chunk.get("completed") or 0
+                total     = chunk.get("total") or 0
+                if status:
+                    status_el.caption(status)
+                if total > 0:
+                    progress_bar.progress(min(completed / total, 1.0))
+            progress_bar.progress(1.0)
+            status_el.caption("Download complete!")
+            st.session_state.selected_model    = model
+            st.session_state.downloading_model = None
+            st.session_state.show_onboarding   = False
+        except Exception as e:
+            st.session_state.download_error    = f"{type(e).__name__}: {e}"
+            st.session_state.downloading_model = None
+        st.rerun()
+        return
 
-if "app_mode" not in st.session_state:
-    st.session_state.app_mode = "day"
-if "messages_day" not in st.session_state:
-    st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
-if "messages_mind" not in st.session_state:
-    st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
-if "already_saved_day" not in st.session_state:
-    st.session_state.already_saved_day = False
-if "already_saved_mind" not in st.session_state:
-    st.session_state.already_saved_mind = False
-if "last_saved_day" not in st.session_state:
-    st.session_state.last_saved_day = None
-if "last_saved_mind" not in st.session_state:
-    st.session_state.last_saved_mind = None
-if "json_entries" not in st.session_state:
-    st.session_state.json_entries = load_memory_json()
-if "cal_year" not in st.session_state:
-    st.session_state.cal_year = date.today().year
-if "cal_month" not in st.session_state:
-    st.session_state.cal_month = date.today().month
-if "selected_date" not in st.session_state:
-    st.session_state.selected_date = None
-if "selected_model" not in st.session_state:
-    st.session_state.selected_model = CHAT_MODEL
-if "model_changed" not in st.session_state:
-    st.session_state.model_changed = False
-if "trigger_save" not in st.session_state:
-    st.session_state.trigger_save = False
-if "save_warning" not in st.session_state:
-    st.session_state.save_warning = None
-if "save_error" not in st.session_state:
-    st.session_state.save_error = None
-
-get_collection()
-if not st.session_state.get("migration_done"):
-    migrate_json_to_chroma(st.session_state.json_entries)
-    st.session_state.migration_done = True
-
-if "all_entries" not in st.session_state:
-    st.session_state.all_entries = get_all_entries()
-
-# ─────────────────────────────────────────────
-# Handle save trigger (runs before sidebar renders)
-# ─────────────────────────────────────────────
-
-if st.session_state.trigger_save:
-    st.session_state.trigger_save = False
-    mode = st.session_state.app_mode
-    label = "Saving and updating your profile..." if mode == "mind" else "Generating summary and saving..."
-    with st.spinner(label):
-        run_save_flow(mode)
-    st.rerun()
-
-# ─────────────────────────────────────────────
-# Sidebar
-# ─────────────────────────────────────────────
-
-total = count_entries()
-
-with st.sidebar:
-    # Model selector
-    available_models = get_available_models()
-    current_index = available_models.index(st.session_state.selected_model) \
-        if st.session_state.selected_model in available_models else 0
-
-    new_model = st.selectbox("Model", available_models, index=current_index)
-
-    if new_model != st.session_state.selected_model:
-        has_unsaved = (
-            (any(m["role"] == "user" for m in st.session_state.messages_day) and not st.session_state.already_saved_day)
-            or
-            (any(m["role"] == "user" for m in st.session_state.messages_mind) and not st.session_state.already_saved_mind)
-        )
-        if has_unsaved:
-            st.session_state.model_changed = True
-        st.session_state.selected_model = new_model
-
-    if st.session_state.model_changed:
-        st.warning("Save your conversation before the new model takes effect.")
-
-    st.divider()
-
-    # Save / New Session — mode-aware
-    mode = st.session_state.app_mode
-    already_saved = st.session_state.already_saved_day if mode == "day" else st.session_state.already_saved_mind
-
-    if already_saved:
-        st.success("Session saved.")
-        if st.button("New Session", use_container_width=True):
-            if mode == "day":
-                st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
-                st.session_state.already_saved_day = False
-                st.session_state.last_saved_day = None
-            else:
-                st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
-                st.session_state.already_saved_mind = False
-                st.session_state.last_saved_mind = None
-            st.session_state.model_changed = False
-            st.rerun()
+    # Header
+    if available:
+        col_back, _ = st.columns([1, 4])
+        with col_back:
+            if st.button("← Back to chat", use_container_width=True):
+                st.session_state.show_onboarding = False
+                st.rerun()
+        st.markdown("### Download more models")
+        st.caption("Models already installed are marked below. Click Download to add more.")
     else:
-        if st.button("End conversation & save", use_container_width=True):
-            st.session_state.trigger_save = True
-            st.rerun()
+        st.markdown("### Get started")
+        st.caption("Download a model to begin. Choose based on your device's RAM.")
 
-    if st.session_state.save_warning:
-        st.warning(st.session_state.save_warning)
-        st.session_state.save_warning = None
-    if st.session_state.save_error:
-        st.error(st.session_state.save_error)
-        st.session_state.save_error = None
+    # Show any error from the previous download attempt
+    if st.session_state.get("download_error"):
+        st.error(f"Download failed — {st.session_state.download_error}")
+        st.session_state.download_error = None
 
-    st.divider()
+    # Model grid
+    for ram_label, models in ONBOARDING_MODELS:
+        st.divider()
+        st.markdown(f"**{ram_label} RAM**")
+        for model_name, description in models:
+            col_info, col_btn = st.columns([4, 1])
+            installed = model_name in available
+            with col_info:
+                label = f"**{model_name}**  ✓" if installed else f"**{model_name}**"
+                st.markdown(label)
+                st.caption(description)
+            with col_btn:
+                if installed:
+                    if st.button("Use", key=f"use_{model_name}", use_container_width=True):
+                        st.session_state.selected_model  = model_name
+                        st.session_state.show_onboarding = False
+                        st.rerun()
+                else:
+                    if st.button("Download", key=f"dl_{model_name}", use_container_width=True):
+                        st.session_state.downloading_model = model_name
+                        st.rerun()
 
-    # Streak metrics
-    all_entries = st.session_state.all_entries
-    current_streak, longest_streak = calculate_streaks(all_entries)
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Streak", f"{current_streak}d")
-    with col2:
-        st.metric("Longest", f"{longest_streak}d")
-
-    # Month navigation
-    nav1, nav2, nav3 = st.columns([1, 3, 1])
-    with nav1:
-        if st.button("←", use_container_width=True, key="cal_prev"):
-            if st.session_state.cal_month == 1:
-                st.session_state.cal_month = 12
-                st.session_state.cal_year -= 1
-            else:
-                st.session_state.cal_month -= 1
-            st.session_state.selected_date = None
-            st.rerun()
-    with nav2:
-        month_label = date(st.session_state.cal_year, st.session_state.cal_month, 1).strftime("%b %Y")
-        st.markdown(
-            f"<p style='text-align:center;margin:0;padding:4px 0;font-size:13px;'>{month_label}</p>",
-            unsafe_allow_html=True
-        )
-    with nav3:
-        if st.button("→", use_container_width=True, key="cal_next"):
-            if st.session_state.cal_month == 12:
-                st.session_state.cal_month = 1
-                st.session_state.cal_year += 1
-            else:
-                st.session_state.cal_month += 1
-            st.session_state.selected_date = None
-            st.rerun()
-
-    fig, entry_map = build_calendar(
-        all_entries,
-        st.session_state.cal_year,
-        st.session_state.cal_month
-    )
-
-    click_data = st.plotly_chart(
-        fig,
-        use_container_width=True,
-        on_select="rerun",
-        key="calendar"
-    )
-
-    if click_data and click_data.get("selection", {}).get("points"):
-        point = click_data["selection"]["points"][0]
-        clicked = point.get("customdata", "")
-        if clicked and clicked in entry_map:
-            st.session_state.selected_date = clicked
-
-    if st.session_state.selected_date:
-        sd = st.session_state.selected_date
-        if sd in entry_map:
-            st.caption(sd)
-            if entry_map[sd]["title"]:
-                st.caption(f"**{entry_map[sd]['title']}**")
-            with st.expander("Read entry"):
-                st.write(entry_map[sd]["summary"])
-
-    st.divider()
-    st.caption("""
-**How it works**
-
-Type freely — there's no right or wrong way to start. Just write what's on your mind.
-
-When you're done, hit **End conversation & save**. Your session gets summarized and stored locally — no cloud, no data sharing.
-
-To switch models, use the dropdown above. Start a **New Session** afterwards so the new model takes effect cleanly.
-
-Your conversation history is used to personalize responses over time.
-""")
-
-    st.divider()
-    st.caption(f"{total} memories stored")
-    if total < VECTOR_MIN_ENTRIES:
-        st.caption(f"Smart search activates at {VECTOR_MIN_ENTRIES} memories — {VECTOR_MIN_ENTRIES - total} to go.")
 
 # ─────────────────────────────────────────────
-# Main — two mode tabs
+# Chat renderer (shared by both tabs)
 # ─────────────────────────────────────────────
-
-tab_day, tab_mind = st.tabs(["📓 Tell me your day", "🧠 Tell me your mind"])
-
 
 def render_chat(mode: str, messages_key: str, input_placeholder: str, input_key: str,
                 already_saved_key: str, last_saved_key: str):
@@ -850,7 +682,7 @@ def render_chat(mode: str, messages_key: str, input_placeholder: str, input_key:
                     st.error(f"Cannot reach Ollama. Is `ollama serve` running?\n\nError: {e}")
 
     already_saved = getattr(st.session_state, already_saved_key)
-    last_saved = getattr(st.session_state, last_saved_key)
+    last_saved    = getattr(st.session_state, last_saved_key)
     if already_saved and last_saved:
         st.success("Saved successfully!")
         st.info(f"**{last_saved['title']}**\n\n{last_saved['summary']}")
@@ -858,22 +690,245 @@ def render_chat(mode: str, messages_key: str, input_placeholder: str, input_key:
             st.info(f"**Profile updated:**\n\n{last_saved['profile_update']}")
 
 
-with tab_day:
-    render_chat(
-        mode="day",
-        messages_key="messages_day",
-        input_placeholder="How was your day?",
-        input_key="input_day",
-        already_saved_key="already_saved_day",
-        last_saved_key="last_saved_day",
-    )
+# ─────────────────────────────────────────────
+# Page config
+# ─────────────────────────────────────────────
 
-with tab_mind:
-    render_chat(
-        mode="mind",
-        messages_key="messages_mind",
-        input_placeholder="What's on your mind?",
-        input_key="input_mind",
-        already_saved_key="already_saved_mind",
-        last_saved_key="last_saved_mind",
-    )
+st.set_page_config(page_title="Telmi", page_icon="📓", layout="centered")
+
+# ─────────────────────────────────────────────
+# Session state
+# ─────────────────────────────────────────────
+
+if "show_onboarding" not in st.session_state:
+    available = get_available_models()
+    force_onboarding = st.query_params.get("onboarding") == "1"
+    st.session_state.show_onboarding   = force_onboarding or len(available) == 0
+    st.session_state.selected_model    = available[0] if available else ""
+if "downloading_model" not in st.session_state:
+    st.session_state.downloading_model = None
+if "download_error" not in st.session_state:
+    st.session_state.download_error = None
+if "app_mode" not in st.session_state:
+    st.session_state.app_mode = "day"
+if "messages_day" not in st.session_state:
+    st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
+if "messages_mind" not in st.session_state:
+    st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
+if "already_saved_day" not in st.session_state:
+    st.session_state.already_saved_day = False
+if "already_saved_mind" not in st.session_state:
+    st.session_state.already_saved_mind = False
+if "last_saved_day" not in st.session_state:
+    st.session_state.last_saved_day = None
+if "last_saved_mind" not in st.session_state:
+    st.session_state.last_saved_mind = None
+if "selected_model" not in st.session_state:
+    st.session_state.selected_model = ""
+if "json_entries" not in st.session_state:
+    st.session_state.json_entries = load_memory_json()
+if "cal_year" not in st.session_state:
+    st.session_state.cal_year = date.today().year
+if "cal_month" not in st.session_state:
+    st.session_state.cal_month = date.today().month
+if "selected_date" not in st.session_state:
+    st.session_state.selected_date = None
+if "model_changed" not in st.session_state:
+    st.session_state.model_changed = False
+if "trigger_save" not in st.session_state:
+    st.session_state.trigger_save = False
+if "save_warning" not in st.session_state:
+    st.session_state.save_warning = None
+if "save_error" not in st.session_state:
+    st.session_state.save_error = None
+
+get_collection()
+if not st.session_state.get("migration_done"):
+    migrate_json_to_chroma(st.session_state.json_entries)
+    st.session_state.migration_done = True
+
+if "all_entries" not in st.session_state:
+    st.session_state.all_entries = get_all_entries()
+
+# ─────────────────────────────────────────────
+# Handle save trigger
+# ─────────────────────────────────────────────
+
+if st.session_state.trigger_save:
+    st.session_state.trigger_save = False
+    mode  = st.session_state.app_mode
+    label = "Saving and updating your profile..." if mode == "mind" else "Generating summary and saving..."
+    with st.spinner(label):
+        run_save_flow(mode)
+    st.rerun()
+
+# ─────────────────────────────────────────────
+# Sidebar
+# ─────────────────────────────────────────────
+
+total = count_entries()
+
+with st.sidebar:
+    available_models = get_available_models()
+
+    if available_models:
+        current_index = (available_models.index(st.session_state.selected_model)
+                         if st.session_state.selected_model in available_models else 0)
+        new_model = st.selectbox("Model", available_models, index=current_index)
+
+        if new_model != st.session_state.selected_model:
+            has_unsaved = (
+                (any(m["role"] == "user" for m in st.session_state.messages_day)
+                 and not st.session_state.already_saved_day)
+                or
+                (any(m["role"] == "user" for m in st.session_state.messages_mind)
+                 and not st.session_state.already_saved_mind)
+            )
+            if has_unsaved:
+                st.session_state.model_changed = True
+            st.session_state.selected_model = new_model
+
+        if st.session_state.model_changed:
+            st.warning("Save your conversation before the new model takes effect.")
+
+        st.divider()
+
+    # Save / New Session
+    if not st.session_state.show_onboarding:
+        mode         = st.session_state.app_mode
+        already_saved = (st.session_state.already_saved_day if mode == "day"
+                         else st.session_state.already_saved_mind)
+
+        if already_saved:
+            st.success("Session saved.")
+            if st.button("New Session", use_container_width=True):
+                if mode == "day":
+                    st.session_state.messages_day      = [{"role": "assistant", "content": get_intro_message("day")}]
+                    st.session_state.already_saved_day = False
+                    st.session_state.last_saved_day    = None
+                else:
+                    st.session_state.messages_mind      = [{"role": "assistant", "content": get_intro_message("mind")}]
+                    st.session_state.already_saved_mind = False
+                    st.session_state.last_saved_mind    = None
+                st.session_state.model_changed = False
+                st.rerun()
+        else:
+            if st.button("End conversation & save", use_container_width=True):
+                st.session_state.trigger_save = True
+                st.rerun()
+
+        if st.session_state.save_warning:
+            st.warning(st.session_state.save_warning)
+            st.session_state.save_warning = None
+        if st.session_state.save_error:
+            st.error(st.session_state.save_error)
+            st.session_state.save_error = None
+
+        st.divider()
+
+    # Streak + calendar
+    all_entries = st.session_state.all_entries
+    current_streak, longest_streak = calculate_streaks(all_entries)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Streak", f"{current_streak}d")
+    with col2:
+        st.metric("Longest", f"{longest_streak}d")
+
+    nav1, nav2, nav3 = st.columns([1, 3, 1])
+    with nav1:
+        if st.button("←", use_container_width=True, key="cal_prev"):
+            if st.session_state.cal_month == 1:
+                st.session_state.cal_month = 12
+                st.session_state.cal_year -= 1
+            else:
+                st.session_state.cal_month -= 1
+            st.session_state.selected_date = None
+            st.rerun()
+    with nav2:
+        month_label = date(st.session_state.cal_year, st.session_state.cal_month, 1).strftime("%b %Y")
+        st.markdown(
+            f"<p style='text-align:center;margin:0;padding:4px 0;font-size:13px;'>{month_label}</p>",
+            unsafe_allow_html=True
+        )
+    with nav3:
+        if st.button("→", use_container_width=True, key="cal_next"):
+            if st.session_state.cal_month == 12:
+                st.session_state.cal_month = 1
+                st.session_state.cal_year += 1
+            else:
+                st.session_state.cal_month += 1
+            st.session_state.selected_date = None
+            st.rerun()
+
+    fig, entry_map = build_calendar(all_entries, st.session_state.cal_year, st.session_state.cal_month)
+    click_data = st.plotly_chart(fig, use_container_width=True, on_select="rerun", key="calendar")
+
+    if click_data and click_data.get("selection", {}).get("points"):
+        point   = click_data["selection"]["points"][0]
+        clicked = point.get("customdata", "")
+        if clicked and clicked in entry_map:
+            st.session_state.selected_date = clicked
+
+    if st.session_state.selected_date:
+        sd = st.session_state.selected_date
+        if sd in entry_map:
+            st.caption(sd)
+            if entry_map[sd]["title"]:
+                st.caption(f"**{entry_map[sd]['title']}**")
+            with st.expander("Read entry"):
+                st.write(entry_map[sd]["summary"])
+
+    st.divider()
+
+    if available_models and not st.session_state.show_onboarding:
+        if st.button("⬇ Download more models", use_container_width=True):
+            st.session_state.show_onboarding = True
+            st.rerun()
+        st.divider()
+
+    st.caption("""
+**How it works**
+
+Type freely — there's no right or wrong way to start. Just write what's on your mind.
+
+When you're done, hit **End conversation & save**. Your session gets summarized and stored locally — no cloud, no data sharing.
+
+To switch models, use the dropdown above. Start a **New Session** afterwards so the new model takes effect cleanly.
+
+Your conversation history is used to personalize responses over time.
+""")
+
+    st.divider()
+    st.caption(f"{total} memories stored")
+    if total < VECTOR_MIN_ENTRIES:
+        st.caption(f"Smart search activates at {VECTOR_MIN_ENTRIES} memories — {VECTOR_MIN_ENTRIES - total} to go.")
+
+# ─────────────────────────────────────────────
+# Main
+# ─────────────────────────────────────────────
+
+if st.session_state.show_onboarding:
+    render_onboarding()
+else:
+    tab_day, tab_mind = st.tabs(["📓 Tell me your day", "🧠 Tell me your mind"])
+
+    with tab_day:
+        render_chat(
+            mode="day",
+            messages_key="messages_day",
+            input_placeholder="How was your day?",
+            input_key="input_day",
+            already_saved_key="already_saved_day",
+            last_saved_key="last_saved_day",
+        )
+
+    with tab_mind:
+        render_chat(
+            mode="mind",
+            messages_key="messages_mind",
+            input_placeholder="What's on your mind?",
+            input_key="input_mind",
+            already_saved_key="already_saved_mind",
+            last_saved_key="last_saved_mind",
+        )

@@ -694,7 +694,7 @@ def render_chat(mode: str, messages_key: str, input_placeholder: str, input_key:
 # Page config
 # ─────────────────────────────────────────────
 
-st.set_page_config(page_title="Telmi", page_icon="📓", layout="centered")
+st.set_page_config(page_title="Telmi — Local AI Journal", page_icon="📓", layout="centered")
 
 # ─────────────────────────────────────────────
 # Session state
@@ -890,13 +890,15 @@ with st.sidebar:
     st.caption("""
 **How it works**
 
-Type freely — there's no right or wrong way to start. Just write what's on your mind.
+Just start typing — no prompt needed.
 
-When you're done, hit **End conversation & save**. Your session gets summarized and stored locally — no cloud, no data sharing.
+**📓 Tell me your day** — reflect on what happened. Telmi asks follow-up questions. When you're done, hit **End conversation & save** to store the session.
 
-To switch models, use the dropdown above. Start a **New Session** afterwards so the new model takes effect cleanly.
+**🧠 Tell me your mind** — a deeper mode for working things through. Telmi builds a private profile across sessions and refers back to it over time. Save when you're done to update it.
 
-Your conversation history is used to personalize responses over time.
+Everything is stored locally in `memory.json` and `profile.json`. Nothing is sent anywhere.
+
+After switching models, tap **New Session** so the change takes effect.
 """)
 
     st.divider()

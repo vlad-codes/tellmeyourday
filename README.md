@@ -1,44 +1,62 @@
-# Tell Me Your Day 📓
+# Telmi — Local AI Journal
 
-Hi, this is my first GitHub project. It's vibe coded.
+*Tell me your day. Tell me your mind.*
 
-A local, private AI reflection companion. Runs entirely on your computer — no cloud, no API costs, no data sharing.
+Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 
-Built on **Gemma 4 E2B** — Google's most capable compact model. Multimodal, strong context handling, and fast enough for fluid conversation on consumer hardware.
+Telmi is an AI journaling companion that runs entirely on your laptop. Talk about your day. Work through what's on your mind. Telmi listens, remembers, and gets better at knowing you — without sending a single word to a server.
 
-## Requirements
+---
 
-- [Ollama](https://ollama.com) installed and running
-- Python 3.10 or newer
+## Two modes. One purpose.
+
+**📓 Tell me your day** — a daily journaling space. Reflect on what happened, what you're feeling, what's next. Telmi asks follow-up questions and builds a running memory of your life over time.
+
+**🧠 Tell me your mind** — a deeper mode for working things through. Telmi tracks what matters to you across sessions and refers back to it when relevant. Like having a therapist who actually remembers.
+
+---
+
+## What makes it different
+
+- **Fully local.** Everything runs on your computer. Nothing is ever sent to a server.
+- **No subscription.** No API key. No usage limits. You own the models, you own the data.
+- **Runs on 8 GB RAM.** No GPU required. Works on everyday hardware.
+- **Remembers you.** Past conversations are stored and retrieved — Telmi doesn't start from scratch every time.
+- **Open models.** Switch between any model you have installed in Ollama. Upgrade when you want.
+
+---
 
 ## Setup
 
-1. Pull the models:
+**1. Install [Ollama](https://ollama.com) and start it.**
+
+**2. Pull the embedding model:**
 ```bash
-ollama pull gemma4:e2b
 ollama pull nomic-embed-text
 ```
 
-2. Install dependencies:
+**3. Install Python dependencies:**
 ```bash
 pip3 install -r requirements.txt
 ```
 
-3. Start the app:
+**4. Run Telmi:**
 ```bash
-python3 -m streamlit run tellyourday.py
+python3 -m streamlit run telmi.py
 ```
 
-> **macOS:** Always use `python3 -m streamlit run` instead of `streamlit run`
+> **macOS:** Always use `python3 -m streamlit run`, not `streamlit run`
 
-## How it works
+On first launch, Telmi walks you through picking and downloading a chat model. Recommended starting points:
 
-Chat with Telmi — your personal reflection companion. Just type what's on your mind. No prompts needed.
+| RAM   | Model                                  |
+|-------|----------------------------------------|
+| 8 GB  | `gemma4:e2b` · `llama3.2:3b`          |
+| 16 GB | `llama3.1:8b` · `mistral:7b`          |
+| 32 GB+ | `llama3.1:70b` · `qwen2.5:32b`       |
 
-When you're done, hit **End conversation & save**. Telmi summarizes your day and stores it locally. Over time, Telmi remembers past conversations and uses them to personalize responses.
-
-Switch models anytime from the sidebar — any model you have installed in Ollama works.
+---
 
 ## Privacy
 
-Your conversations stay local. `memory.json` and `chroma_db/` are excluded from GitHub via `.gitignore`.
+`memory.json`, `profile.json`, and `chroma_db/` live on your machine and are excluded from git. Telmi never phones home.

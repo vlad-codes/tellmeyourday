@@ -2,9 +2,9 @@
 
 *Tell me your day. Tell me your mind.*
 
-![Onboarding](screenshots/onboarding_model-download.png)
-![Tell me your day](screenshots/yourday.png)
-![Tell me your mind](screenshots/yourmind.png)
+| Onboarding | Your Day | Your Mind |
+| :---: | :---: | :---: |
+| <a href="./screenshots/Onboarding_model-download.png"><img src="./screenshots/Onboarding_model-download.png" width="250"></a> | <a href="./screenshots/yourday.png"><img src="./screenshots/yourday.png" width="250"></a> | <a href="./screenshots/yourmind.png"><img src="./screenshots/yourmind.png" width="250"></a> |
 
 Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 

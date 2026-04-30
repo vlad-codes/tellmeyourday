@@ -528,7 +528,7 @@ def search_entries(
     if query_embedding is None:
         raise HTTPException(
             status_code=503,
-            detail="Embedding-Modell nicht verfügbar. Bitte prüfen ob Ollama läuft.",
+            detail="Embedding model not available. Make sure Ollama is running.",
         )
 
     n_results = min(limit, total)

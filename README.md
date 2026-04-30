@@ -2,9 +2,9 @@
 
 *Tell me your day. Tell me your mind.*
 
-| Onboarding | Your Day | Your Mind |
-| :---: | :---: | :---: |
-| <a href="./screenshots/model_onboarding.png"><img src="./screenshots/model_onboarding.png" width="250"></a> | <a href="./screenshots/yourday_chat.png"><img src="./screenshots/yourday_chat.png" width="250"></a> | <a href="./screenshots/yourmind_chat.png"><img src="./screenshots/yourmind_chat.png" width="250"></a> |
+| Setup | Onboarding | Your Day | Your Mind | Archive |
+| :---: | :---: | :---: | :---: | :---: |
+| <a href="./screenshots/ollama_onboarding.png"><img src="./screenshots/ollama_onboarding.png" width="160"></a> | <a href="./screenshots/model_onboarding.png"><img src="./screenshots/model_onboarding.png" width="160"></a> | <a href="./screenshots/yourday_chat.png"><img src="./screenshots/yourday_chat.png" width="160"></a> | <a href="./screenshots/yourmind_chat.png"><img src="./screenshots/yourmind_chat.png" width="160"></a> | <a href="./screenshots/archive_search.png"><img src="./screenshots/archive_search.png" width="160"></a> |
 
 Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 
@@ -16,7 +16,7 @@ Telmi is a native macOS journaling app powered by local AI. Talk about your day.
 
 **📓 Tell me your day** — a daily journaling space. Reflect on what happened, what you're feeling, what's next. Telmi asks follow-up questions and builds a running memory of your life over time.
 
-**🧠 Tell me your mind** — a deeper mode for working things through. Telmi tracks what matters to you across sessions and refers back to it when relevant. Like having a therapist who actually remembers.
+**🧠 Tell me your mind** — a deeper mode for working things through. Telmi tracks what matters to you across sessions and refers back to it when relevant. A space to think out loud with something that actually remembers.
 
 ---
 

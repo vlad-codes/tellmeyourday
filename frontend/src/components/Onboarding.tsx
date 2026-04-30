@@ -127,7 +127,7 @@ function NoOllamaScreen({ onRetry }: { onRetry: () => void }) {
           <CodeBlock code="ollama serve" />
         </div>
         <p className="text-[11px] text-slate-400/70 dark:text-slate-600">
-          Alternativ:{' '}
+          Or:{' '}
           <a
             href="https://ollama.com/download"
             target="_blank"

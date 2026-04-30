@@ -8,9 +8,9 @@ const API = 'http://localhost:8000';
 
 export const INTRO: Record<Mode, string> = {
   day:
-    "Hey, I'm Telmi — your personal reflection companion.\n\nI'm here to listen. Just tell me what's been on your mind today — big or small, good or bad.\n\nI remember our past conversations and I'm curious how you're doing.",
+    "Hey, I'm Telmi.\n\nJust tell me what's been on your mind — big or small, good or bad. I'm here to listen.",
   mind:
-    "Hey, I'm Telmi — let's go a little deeper today.\n\nWhat's been on your mind? Pick something specific — a situation, a feeling, a thought you keep coming back to.\n\nWe'll look at it together.",
+    "Hey, I'm Telmi.\n\nThis mode is for going a little deeper — a specific situation, a thought you keep returning to, something you haven't quite worked out. Pick one thing and we'll look at it.",
 };
 
 interface ChatProps {

@@ -4,7 +4,7 @@
 
 | Onboarding | Your Day | Your Mind |
 | :---: | :---: | :---: |
-| <a href="./screenshots/Onboarding_model-download.png"><img src="./screenshots/Onboarding_model-download.png" width="250"></a> | <a href="./screenshots/yourday.png"><img src="./screenshots/yourday.png" width="250"></a> | <a href="./screenshots/yourmind.png"><img src="./screenshots/yourmind.png" width="250"></a> |
+| <a href="./screenshots/model_onboarding.png"><img src="./screenshots/model_onboarding.png" width="250"></a> | <a href="./screenshots/yourday_chat.png"><img src="./screenshots/yourday_chat.png" width="250"></a> | <a href="./screenshots/yourmind_chat.png"><img src="./screenshots/yourmind_chat.png" width="250"></a> |
 
 Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 

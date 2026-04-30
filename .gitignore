@@ -1,14 +1,27 @@
 # Persönliche Daten
 memory.json
+profile.json
 chroma_db/
+
+# PyInstaller Build-Artefakte
+dist_backend/
+build_backend/
 
 # Python
 __pycache__/
 *.pyc
 .env
 
+# PyInstaller
+build/
+dist/
+*.spec
+
 # macOS
 .DS_Store
+
+# Claude Code
+.claude/
 
 # pyenv
 .python-version

@@ -1,0 +1,198 @@
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, "Helvetica Neue", sans-serif;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-feature-settings: "cv01", "cv02", "cv03", "cv04", "kern";
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* transparent so native macOS vibrancy shows through */
+  background: transparent;
+  color: #1e293b;
+}
+
+/* ─── Root background ────────────────────────────────────────────────────── */
+/* This gradient tints the native vibrancy beautifully; also serves as
+   the full background when vibrancy is unavailable (e.g. dev browser). */
+
+#root {
+  height: 100dvh;
+  display: flex;
+  background: linear-gradient(145deg, #eef2ff 0%, #f8fafc 48%, #f0f9ff 100%);
+}
+
+.dark #root {
+  background: linear-gradient(145deg, #0f172a 0%, #1a1040 52%, #0f172a 100%);
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.22);
+  border-radius: 99px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.44);
+}
+
+/* ─── Glass sidebar ──────────────────────────────────────────────────────── */
+/* Combines native-window vibrancy + CSS backdrop-filter for double effect */
+
+.glass-sidebar {
+  background: rgba(248, 250, 252, 0.70);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-right: 1px solid rgba(226, 232, 240, 0.65);
+}
+
+.dark .glass-sidebar {
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ─── Chat area ──────────────────────────────────────────────────────────── */
+/* Opaque enough for readability, slight transparency lets vibrancy tint */
+
+.chat-bg {
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.dark .chat-bg {
+  background: rgba(15, 23, 42, 0.90);
+}
+
+/* ─── Floating input ─────────────────────────────────────────────────────── */
+
+.input-float {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.10),
+    0 4px 20px rgba(99, 102, 241, 0.08),
+    0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.dark .input-float {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.15),
+    0 4px 24px rgba(99, 102, 241, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes msgIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.msg-enter {
+  animation: msgIn 0.24s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursorBlink 0.85s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.18s ease-out both;
+}
+
+/* ─── Onboarding glass card ──────────────────────────────────────────────── */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: 1px solid rgba(226, 232, 240, 0.70);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.07),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.80);
+}
+
+.dark .glass-card {
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.40),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Life Dashboard glass popup ─────────────────────────────────────────── */
+
+@keyframes popupIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.glass-popup {
+  animation: popupIn 0.16s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(99, 102, 241, 0.14);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.09),
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.70);
+}
+
+.dark .glass-popup {
+  background: rgba(15, 23, 42, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.20),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.04);
+}
+

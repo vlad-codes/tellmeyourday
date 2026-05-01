@@ -23,5 +23,8 @@ dist/
 # Claude Code
 .claude/
 
+# Interne Dokumente
+TELMI_BRIEFING.md
+
 # pyenv
 .python-version

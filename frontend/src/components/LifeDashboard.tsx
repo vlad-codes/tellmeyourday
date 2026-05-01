@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CalendarDay } from '../types';
 
 const API = 'http://localhost:8000';
@@ -11,7 +11,20 @@ const MONTH_NAMES = [
 
 interface Props {
   onDayClick: (timestamp: string) => void;
+  onOpenArchive: () => void;
   refreshKey: number;
+}
+
+function streakMessage(n: number): { num: string | null; label: string } {
+  if (n === 0)   return { num: null, label: 'Start today.' };
+  if (n === 1)   return { num: null, label: 'Day one.' };
+  if (n === 7)   return { num: null, label: 'One week straight.' };
+  if (n === 14)  return { num: null, label: 'Two weeks straight.' };
+  if (n === 21)  return { num: null, label: 'Three weeks straight.' };
+  if (n === 30)  return { num: null, label: 'Thirty days. Impressive.' };
+  if (n === 100) return { num: null, label: '100 days. Seriously.' };
+  if (n === 365) return { num: null, label: 'A full year.' };
+  return { num: String(n), label: 'days in a row.' };
 }
 
 function computeStreak(days: CalendarDay[]): number {
@@ -40,7 +53,7 @@ function toDateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
+export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }: Props) {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => today.toISOString().slice(0, 10), [today]);
 
@@ -52,6 +65,35 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
   const [hoveredDate, setHoveredDate] = useState<string | null>(null);
   const [hoverPos, setHoverPos] = useState<{ top: number; left: number } | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [statsPinned, setStatsPinned] = useState(false);
+  const [statsPos, setStatsPos] = useState<{ bottom: number; left: number } | null>(null);
+  const statsButtonRef = useRef<HTMLButtonElement>(null);
+  const statsCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function statsMouseEnter() {
+    if (statsCloseTimer.current) clearTimeout(statsCloseTimer.current);
+    const rect = statsButtonRef.current?.getBoundingClientRect();
+    if (rect) setStatsPos({ bottom: window.innerHeight - rect.bottom, left: rect.right + 10 });
+    setStatsOpen(true);
+  }
+
+  function statsMouseLeave() {
+    if (statsPinned) return;
+    statsCloseTimer.current = setTimeout(() => setStatsOpen(false), 80);
+  }
+
+  useEffect(() => {
+    if (!statsPinned) return;
+    function handleOutside(e: MouseEvent) {
+      if (!statsButtonRef.current?.contains(e.target as Node)) {
+        setStatsPinned(false);
+        setStatsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [statsPinned]);
 
   useEffect(() => {
     setFetchError(false);
@@ -75,11 +117,6 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
   }, [calDays]);
 
   const streak = useMemo(() => computeStreak(calDays), [calDays]);
-
-  const thisMonthCount = useMemo(() => {
-    const prefix = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    return calDays.filter((d) => d.date.startsWith(prefix)).length;
-  }, [calDays, today]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -219,40 +256,86 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
             })}
           </div>
 
-          {/* Stats strip — below calendar */}
-          <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/[0.05] flex items-center gap-3 flex-wrap">
-            {fetchError ? (
-              <span className="text-[10px] text-slate-400/60 dark:text-slate-600 italic">
-                Backend unreachable
-              </span>
-            ) : (
-              <>
-                {streak > 0 ? (
-                  <div className="flex items-center gap-1 text-[11px]">
-                    <span className="text-[13px] leading-none">🔥</span>
-                    <span className="font-semibold text-slate-700 dark:text-slate-200">{streak}</span>
-                    <span className="text-slate-400 dark:text-slate-500">
-                      {streak === 1 ? 'day' : 'days'}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-                    <span className="text-[12px] leading-none">✦</span>
-                    <span>Start a streak</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 text-[11px]">
-                  <span className="text-[11px] leading-none">📅</span>
-                  <span className="font-semibold text-slate-700 dark:text-slate-200">{thisMonthCount}</span>
-                  <span className="text-slate-400 dark:text-slate-500">this month</span>
-                </div>
-                {calDays.length > 0 && (
-                  <div className="ml-auto text-[10px] text-slate-400/70 dark:text-slate-600 tabular-nums">
-                    {calDays.length} total
-                  </div>
-                )}
-              </>
-            )}
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="px-3 pb-3 pt-1 flex gap-1">
+        <button
+          onClick={onOpenArchive}
+          className="flex-1 text-[13px] rounded-xl px-3 py-2.5
+                     flex items-center justify-center gap-2 group
+                     text-slate-500 dark:text-slate-400
+                     hover:bg-white/50 dark:hover:bg-white/[0.06]
+                     border border-transparent
+                     hover:border-slate-200/60 dark:hover:border-white/[0.08]
+                     transition-all duration-150"
+        >
+          <svg className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <circle cx="11" cy="11" r="7" />
+            <path strokeLinecap="round" d="m21 21-4.35-4.35" />
+          </svg>
+          <span>Archive</span>
+        </button>
+        <button
+          ref={statsButtonRef}
+          onMouseEnter={statsMouseEnter}
+          onMouseLeave={statsMouseLeave}
+          onClick={() => {
+            if (statsPinned) { setStatsPinned(false); setStatsOpen(false); }
+            else setStatsPinned(true);
+          }}
+          className="flex-1 text-[13px] rounded-xl px-3 py-2.5
+                     flex items-center justify-center gap-2 group
+                     text-slate-500 dark:text-slate-400
+                     hover:bg-white/50 dark:hover:bg-white/[0.06]
+                     border border-transparent
+                     hover:border-slate-200/60 dark:hover:border-white/[0.08]
+                     transition-all duration-150"
+        >
+          <svg className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5h4.5v6H3v-6zm6.75-6H14.25v12H9.75V7.5zm6.75 3H21v9h-4.5v-9z" />
+          </svg>
+          <span>Stats</span>
+        </button>
+      </div>
+
+      {/* Stats popup */}
+      {statsOpen && statsPos && (
+        <div
+          className="glass-popup fixed z-[200] w-56 rounded-2xl p-4"
+          style={{ bottom: statsPos.bottom, left: statsPos.left }}
+          onMouseEnter={() => { if (statsCloseTimer.current) clearTimeout(statsCloseTimer.current); }}
+          onMouseLeave={statsMouseLeave}
+        >
+          {/* Tail */}
+          <div className="absolute -left-1.5 bottom-4 w-3 h-3 rotate-45
+                          bg-white/88 dark:bg-slate-900/88
+                          border-l border-b border-slate-200/60 dark:border-white/[0.09]" />
+
+          <p className="text-[10px] font-semibold text-indigo-500 dark:text-indigo-400
+                        uppercase tracking-widest mb-3">
+            Your stats
+          </p>
+          <div className="flex flex-col gap-2.5 text-[12px] text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between">
+              <span>Streak</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">— days</span>
+            </div>
+            <div className="flex justify-between">
+              <span>This month</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">— entries</span>
+            </div>
+            <div className="flex justify-between">
+              <span>All time</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">— entries</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Avg. per week</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-200">—</span>
+            </div>
           </div>
         </div>
       )}

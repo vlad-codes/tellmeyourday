@@ -121,30 +121,7 @@ export default function Sidebar({
       </div>
 
       {/* Life Dashboard — pinned at bottom */}
-      <LifeDashboard onDayClick={onDayClick} refreshKey={calendarRefreshKey} />
-
-      {/* Archive search — below calendar */}
-      <div className="px-3 pb-3">
-        <button
-          onClick={onOpenArchive}
-          className="w-full text-left text-[13px] rounded-xl px-3 py-2.5
-                     flex items-center gap-2.5 group
-                     text-slate-500 dark:text-slate-400
-                     hover:bg-white/50 dark:hover:bg-white/[0.06]
-                     border border-transparent
-                     hover:border-slate-200/60 dark:hover:border-white/[0.08]
-                     transition-all duration-150"
-        >
-          <svg
-            className="w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path strokeLinecap="round" d="m21 21-4.35-4.35" />
-          </svg>
-          <span>Search archive</span>
-        </button>
-      </div>
+      <LifeDashboard onDayClick={onDayClick} onOpenArchive={onOpenArchive} refreshKey={calendarRefreshKey} />
     </aside>
   );
 }

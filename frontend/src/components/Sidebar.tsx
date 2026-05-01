@@ -78,13 +78,13 @@ export default function Sidebar({
               active={mode === 'day'}
               onClick={() => onModeChange('day')}
               icon="📓"
-              label="Tell me your day"
+              label="Your Day"
             />
             <ModeButton
               active={mode === 'mind'}
               onClick={() => onModeChange('mind')}
-              icon="🧠"
-              label="Tell me your mind"
+              icon="💭"
+              label="Your Mind"
             />
           </div>
         </div>

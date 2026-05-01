@@ -124,8 +124,8 @@ export default function Chat({
   }
 
   const inputDisabled = isStreaming || isSaving || alreadySaved;
-  const modeLabel = mode === 'day' ? 'Tell me your day' : 'Tell me your mind';
-  const modeIcon = mode === 'day' ? '📓' : '🧠';
+  const modeLabel = mode === 'day' ? 'Your Day' : 'Your Mind';
+  const modeIcon = mode === 'day' ? '📓' : '💭';
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

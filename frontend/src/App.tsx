@@ -125,8 +125,6 @@ export default function App() {
         onModeChange={setMode}
         onOpenArchive={() => setArchiveOpen(true)}
         onDayClick={handleDayClick}
-        isDark={isDark}
-        onToggleDark={() => setIsDark((d) => !d)}
         calendarRefreshKey={calendarRefreshKey}
       />
       {archiveOpen && (
@@ -135,6 +133,30 @@ export default function App() {
           initialChatTimestamp={archiveTimestamp}
         />
       )}
+      <button
+        onClick={() => setIsDark((d) => !d)}
+        aria-label="Toggle dark mode"
+        className="fixed top-1 right-4 z-20
+                   w-8 h-8 flex items-center justify-center rounded-lg
+                   text-slate-400 dark:text-slate-500
+                   hover:text-slate-600 dark:hover:text-slate-300
+                   hover:bg-slate-100/70 dark:hover:bg-white/[0.07]
+                   transition-all duration-150"
+      >
+        {isDark ? (
+          <svg className="w-[15px] h-[15px]" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M12 3v2m0 14v2M5.636 5.636l1.414 1.414m9.9 9.9 1.414 1.414M3 12h2m14 0h2M5.636 18.364l1.414-1.414m9.9-9.9 1.414-1.414M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+          </svg>
+        ) : (
+          <svg className="w-[15px] h-[15px]" fill="none" viewBox="0 0 24 24"
+               stroke="currentColor" strokeWidth={1.8}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        )}
+      </button>
       <main className="flex-1 overflow-hidden chat-bg">
         <Chat
           key={`${mode}-${sessionKey[mode]}`}

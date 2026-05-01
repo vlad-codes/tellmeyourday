@@ -10,8 +10,6 @@ interface SidebarProps {
   onModeChange: (mode: Mode) => void;
   onOpenArchive: () => void;
   onDayClick: (timestamp: string) => void;
-  isDark: boolean;
-  onToggleDark: () => void;
   calendarRefreshKey: number;
 }
 
@@ -23,8 +21,6 @@ export default function Sidebar({
   onModeChange,
   onOpenArchive,
   onDayClick,
-  isDark,
-  onToggleDark,
   calendarRefreshKey,
 }: SidebarProps) {
   return (
@@ -45,15 +41,6 @@ export default function Sidebar({
             Your private journal AI
           </p>
         </div>
-        <button
-          onClick={onToggleDark}
-          aria-label="Toggle dark mode"
-          className="text-sm text-slate-400 dark:text-slate-500
-                     hover:text-slate-600 dark:hover:text-slate-300
-                     transition-colors duration-150 leading-none mb-0.5"
-        >
-          {isDark ? '○' : '●'}
-        </button>
       </div>
 
       {/* Scrollable main content */}

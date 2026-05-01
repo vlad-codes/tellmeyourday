@@ -401,14 +401,6 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
                 </div>
               </div>
             ))}
-            <div className="col-span-2">
-              <span className="text-[15px] font-semibold text-slate-700 dark:text-slate-100">
-                {stats?.avg_per_week ?? '—'}
-              </span>
-              <span className="text-[10px] text-slate-400 dark:text-slate-500 ml-1.5">
-                per week
-              </span>
-            </div>
           </div>
 
           {/* Badge shelf */}

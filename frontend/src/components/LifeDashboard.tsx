@@ -121,7 +121,7 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
       >
         <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500
                          uppercase tracking-widest">
-          Life Dashboard
+          Your Journey
         </span>
         <span
           className={`text-[11px] text-slate-400 dark:text-slate-500
@@ -132,45 +132,9 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
         </span>
       </button>
 
-      {/* Stats strip — always visible */}
-      <div className="px-4 pb-3 flex items-center gap-3 flex-wrap">
-        {fetchError ? (
-          <span className="text-[10px] text-slate-400/60 dark:text-slate-600 italic">
-            Backend unreachable
-          </span>
-        ) : (
-          <>
-            {streak > 0 ? (
-              <div className="flex items-center gap-1 text-[11px]">
-                <span className="text-[13px] leading-none">🔥</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-200">{streak}</span>
-                <span className="text-slate-400 dark:text-slate-500">
-                  {streak === 1 ? 'day' : 'days'}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
-                <span className="text-[12px] leading-none">✦</span>
-                <span>Start a streak</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1 text-[11px]">
-              <span className="text-[11px] leading-none">📅</span>
-              <span className="font-semibold text-slate-700 dark:text-slate-200">{thisMonthCount}</span>
-              <span className="text-slate-400 dark:text-slate-500">this month</span>
-            </div>
-            {calDays.length > 0 && (
-              <div className="ml-auto text-[10px] text-slate-400/70 dark:text-slate-600 tabular-nums">
-                {calDays.length} total
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       {/* Calendar — collapsible */}
       {!collapsed && (
-        <div className="px-3 pb-4 fade-in">
+        <div className="px-3 pb-3 fade-in">
           {/* Month navigation */}
           <div className="flex items-center justify-between mb-2 px-0.5">
             <button
@@ -253,6 +217,42 @@ export default function LifeDashboard({ onDayClick, refreshKey }: Props) {
                 </div>
               );
             })}
+          </div>
+
+          {/* Stats strip — below calendar */}
+          <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/[0.05] flex items-center gap-3 flex-wrap">
+            {fetchError ? (
+              <span className="text-[10px] text-slate-400/60 dark:text-slate-600 italic">
+                Backend unreachable
+              </span>
+            ) : (
+              <>
+                {streak > 0 ? (
+                  <div className="flex items-center gap-1 text-[11px]">
+                    <span className="text-[13px] leading-none">🔥</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{streak}</span>
+                    <span className="text-slate-400 dark:text-slate-500">
+                      {streak === 1 ? 'day' : 'days'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 text-[11px] text-slate-400 dark:text-slate-500">
+                    <span className="text-[12px] leading-none">✦</span>
+                    <span>Start a streak</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1 text-[11px]">
+                  <span className="text-[11px] leading-none">📅</span>
+                  <span className="font-semibold text-slate-700 dark:text-slate-200">{thisMonthCount}</span>
+                  <span className="text-slate-400 dark:text-slate-500">this month</span>
+                </div>
+                {calDays.length > 0 && (
+                  <div className="ml-auto text-[10px] text-slate-400/70 dark:text-slate-600 tabular-nums">
+                    {calDays.length} total
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

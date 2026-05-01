@@ -123,10 +123,6 @@ export default function App() {
         onModelChange={setSelectedModel}
         mode={mode}
         onModeChange={setMode}
-        onSave={handleSave}
-        isSaving={isSaving}
-        alreadySaved={alreadySaved[mode]}
-        onNewSession={handleNewSession}
         onOpenArchive={() => setArchiveOpen(true)}
         onDayClick={handleDayClick}
         isDark={isDark}
@@ -149,6 +145,8 @@ export default function App() {
           savedResult={savedResult[mode]}
           saveError={saveError[mode]}
           onHistoryChange={(h) => handleHistoryChange(mode, h)}
+          onSave={handleSave}
+          onNewSession={handleNewSession}
         />
       </main>
     </div>

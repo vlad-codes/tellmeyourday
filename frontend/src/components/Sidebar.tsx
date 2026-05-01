@@ -8,10 +8,6 @@ interface SidebarProps {
   onModelChange: (model: string) => void;
   mode: Mode;
   onModeChange: (mode: Mode) => void;
-  onSave: () => void;
-  isSaving: boolean;
-  alreadySaved: boolean;
-  onNewSession: () => void;
   onOpenArchive: () => void;
   onDayClick: (timestamp: string) => void;
   isDark: boolean;
@@ -25,10 +21,6 @@ export default function Sidebar({
   onModelChange,
   mode,
   onModeChange,
-  onSave,
-  isSaving,
-  alreadySaved,
-  onNewSession,
   onOpenArchive,
   onDayClick,
   isDark,
@@ -126,10 +118,13 @@ export default function Sidebar({
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="h-px bg-slate-200/60 dark:bg-white/[0.06] mx-2" />
+      </div>
 
-        {/* Archive search */}
+      {/* Life Dashboard — pinned at bottom */}
+      <LifeDashboard onDayClick={onDayClick} refreshKey={calendarRefreshKey} />
+
+      {/* Archive search — below calendar */}
+      <div className="px-3 pb-3">
         <button
           onClick={onOpenArchive}
           className="w-full text-left text-[13px] rounded-xl px-3 py-2.5
@@ -149,55 +144,7 @@ export default function Sidebar({
           </svg>
           <span>Search archive</span>
         </button>
-
-        {/* Save / New session — pushed to bottom */}
-        <div className="mt-auto">
-          {alreadySaved ? (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 px-2 text-[13px] text-emerald-600 dark:text-emerald-400 font-medium">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Session saved</span>
-              </div>
-              <button
-                onClick={onNewSession}
-                className="w-full text-[13px] text-slate-600 dark:text-slate-300
-                           bg-slate-100/80 dark:bg-white/[0.07]
-                           hover:bg-slate-200/70 dark:hover:bg-white/[0.12]
-                           border border-slate-200/60 dark:border-white/[0.08]
-                           rounded-xl px-3 py-2.5 transition-all duration-150 text-left"
-              >
-                New session
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onSave}
-              disabled={isSaving}
-              className="w-full text-[13px] font-medium
-                         bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
-                         dark:bg-indigo-500 dark:hover:bg-indigo-400
-                         text-white rounded-xl px-3 py-2.5
-                         transition-all duration-150
-                         shadow-sm shadow-indigo-500/30
-                         disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving…
-                </span>
-              ) : (
-                'End & save session'
-              )}
-            </button>
-          )}
-        </div>
       </div>
-
-      {/* Life Dashboard — pinned at bottom */}
-      <LifeDashboard onDayClick={onDayClick} refreshKey={calendarRefreshKey} />
     </aside>
   );
 }

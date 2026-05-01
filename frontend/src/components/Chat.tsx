@@ -21,6 +21,8 @@ interface ChatProps {
   savedResult: SaveResponse | null;
   saveError: string | null;
   onHistoryChange: (history: ChatMessage[]) => void;
+  onSave: () => void;
+  onNewSession: () => void;
 }
 
 export default function Chat({
@@ -31,6 +33,8 @@ export default function Chat({
   savedResult,
   saveError,
   onHistoryChange,
+  onSave,
+  onNewSession,
 }: ChatProps) {
   const initialHistory: ChatMessage[] = [{ role: 'assistant', content: INTRO[mode] }];
   const [history, setHistory] = useState<ChatMessage[]>(initialHistory);
@@ -210,6 +214,7 @@ export default function Chat({
       {/* Floating input */}
       <div className="shrink-0 px-4 pb-4 pt-2">
         <div className="max-w-2xl mx-auto">
+
           <div
             className="input-float flex items-end gap-2 rounded-2xl
                        bg-white/90 dark:bg-slate-800/80
@@ -258,9 +263,47 @@ export default function Chat({
               </svg>
             </button>
           </div>
-          <p className="text-[11px] text-slate-400/70 dark:text-slate-500/70 mt-1.5 text-center tracking-tight">
-            Return to send · Shift+Return for new line
-          </p>
+          <div className="flex items-center justify-end gap-2 mt-1.5">
+            {!alreadySaved && (
+              <p className="text-[11px] text-slate-400/70 dark:text-slate-500/70 tracking-tight">
+                Don't forget:
+              </p>
+            )}
+            {alreadySaved ? (
+              <button
+                onClick={onNewSession}
+                className="text-[11px] text-slate-500 dark:text-slate-400
+                           hover:text-slate-700 dark:hover:text-slate-200
+                           border border-slate-300/60 dark:border-white/[0.10]
+                           hover:border-slate-400/60 dark:hover:border-white/[0.18]
+                           rounded px-1.5 py-0.5
+                           transition-all duration-150"
+              >
+                + New session
+              </button>
+            ) : (
+              <button
+                onClick={onSave}
+                disabled={isSaving}
+                className="text-[11px] font-medium text-indigo-500 dark:text-indigo-400
+                           hover:text-indigo-700 dark:hover:text-indigo-300
+                           border border-indigo-300/50 dark:border-indigo-400/25
+                           hover:border-indigo-400/70 dark:hover:border-indigo-400/50
+                           rounded px-1.5 py-0.5
+                           transition-all duration-150
+                           disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <span className="flex items-center gap-1">
+                    <span className="w-2.5 h-2.5 border border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin" />
+                    Saving…
+                  </span>
+                ) : (
+                  mode === 'day' ? 'Save Your Day' : 'Save Your Mind'
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

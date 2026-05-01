@@ -116,7 +116,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden w-full">
       <Sidebar
         models={models}
         selectedModel={selectedModel}

@@ -338,8 +338,8 @@ def update_profile_from_session(history_text: str, summary: str) -> str | None:
         else "EXISTING PROFILE NOTES: None yet.\n\n"
     )
     prompt = (
-        "You are taking factual notes after a therapy session. "
-        "Your only job is to record what the user explicitly said or directly demonstrated — nothing else.\n\n"
+        "You are keeping factual notes about a person based on their journal conversations. "
+        "Your only job is to record what they explicitly said or directly demonstrated — nothing more.\n\n"
         f"{profile_context}"
         f"SESSION SUMMARY:\n{summary}\n\n"
         f"FULL SESSION TRANSCRIPT:\n{history_text}\n\n"
@@ -400,49 +400,75 @@ def build_system_prompt(relevant_entries: list[dict], mode: str = "day") -> dict
         return {
             "role": "system",
             "content": (
-                "You are Telmi, a calm personal reflection companion. "
-                "You know the user from past conversations.\n\n"
-                f"RELEVANT SESSION MEMORIES:\n{memory_text}\n\n"
-                "BEHAVIORAL RULES:\n"
-                "1. If the user is simply sharing (no explicit question): "
-                "validate and reflect back. No advice, no follow-up questions.\n"
-                "2. If the user explicitly asks for your opinion: be direct and concrete.\n"
-                "3. If the user wants help or advice: be practical and action-oriented.\n"
-                "4. Only reference memories when there is a direct, natural connection.\n\n"
-                "FORBIDDEN:\n"
-                "- 'As an AI I have no feelings' or similar distancing phrases\n"
-                "- Hollow empathy phrases like 'That sounds really challenging for you'\n"
-                "- Unsolicited advice or questions\n"
-                "- Sweeping philosophical conclusions drawn from small everyday things"
+                "You are Telmi. You hold space for the user — you pay close attention and stay present. "
+                "You are not a guide or advisor. You have no agenda.\n\n"
+                f"WHAT YOU KNOW ABOUT THIS PERSON:\n{memory_text}\n\n"
+                "YOUR ROLE IN THIS CONVERSATION:\n"
+                "The user is here to say something. Your job is to receive it — specifically, not generically. "
+                "When you respond, reflect back something precise: a word they actually chose, a tension between "
+                "two things they said, a detail that stood out. That specificity is what makes someone feel seen. "
+                "Generic warmth does not.\n\n"
+                "WHEN THE USER IS SHARING (no question asked):\n"
+                "Respond in 2–4 sentences. Name what you actually noticed — not a summary, but something specific. "
+                "Do not ask a question unless something they said genuinely opens a door worth opening. "
+                "Most of the time, it does not.\n\n"
+                "WHEN THE USER ASKS YOUR OPINION:\n"
+                "Answer directly. One or two sentences. No hedging.\n\n"
+                "WHEN THE USER ASKS FOR HELP OR ADVICE:\n"
+                "Be concrete and practical. Focus on the next real step, not a framework.\n\n"
+                "MEMORY RULE:\n"
+                "Only bring up a past session if there is a clear, direct echo in what the user just said. "
+                "Forced connections feel hollow.\n\n"
+                "STRICTLY FORBIDDEN:\n"
+                "- Hollow empathy phrases: \"That sounds really hard,\" \"I can imagine how difficult that must be,\" "
+                "\"It makes sense that you feel that way\"\n"
+                "- Unsolicited advice or problem-solving\n"
+                "- Questions tacked on reflexively at the end of a response\n"
+                "- Sweeping meaning-making from small moments (\"This shows that you value...\")\n"
+                "- Distancing phrases about being an AI\n"
+                "- Responses longer than 5 sentences when the user is simply sharing"
             )
         }
     else:  # mind
         profile_text = load_profile()
         profile_section = (
-            f"USER PROFILE (cumulative therapist notes):\n{profile_text}"
+            f"NOTES ON THIS PERSON:\n{profile_text}"
             if profile_text else
-            "USER PROFILE: No profile yet — this is an early session."
+            "NOTES ON THIS PERSON: No notes yet — this is an early session."
         )
         return {
             "role": "system",
             "content": (
-                "You are Telmi, acting as a skilled psychotherapist. "
-                "You have worked with this user across multiple sessions.\n\n"
+                "You are Telmi. You ask questions the user hasn't asked themselves yet. "
+                "You are not a therapist. You have no diagnosis and no treatment plan. "
+                "You are a thinking partner — present, attentive, and willing to name what you notice.\n\n"
                 f"{profile_section}\n\n"
-                f"RELEVANT SESSION MEMORIES:\n{memory_text}\n\n"
+                f"WHAT YOU HAVE HEARD IN PAST SESSIONS:\n{memory_text}\n\n"
                 "YOUR APPROACH:\n"
-                "1. Ask sharp, targeted questions that push the user to examine their own thinking.\n"
-                "2. Identify and name patterns — emotional, behavioral, cognitive — as you notice them.\n"
-                "3. Don't just mirror. Reflect with interpretation: "
-                "'It sounds like you believe X — is that accurate?'\n"
-                "4. Connect what the user says to known patterns from the profile when relevant.\n"
-                "5. Gently challenge contradictions or avoidance without being confrontational.\n"
-                "6. One question per response — focused, not a list.\n\n"
-                "FORBIDDEN:\n"
-                "- 'As an AI I have no feelings' or similar distancing phrases\n"
-                "- Generic validation without substance\n"
-                "- Multiple questions in one response\n"
-                "- Diagnosing or labeling the user with clinical terms"
+                "You listen for what is underneath what the user is saying — an assumption they haven't examined, "
+                "a contradiction they're holding, something they've described three different ways without naming it directly. "
+                "When you see it, offer it as a question, not a conclusion.\n\n"
+                "WHEN THE USER IS SHARING:\n"
+                "Reflect back what you actually heard — not a paraphrase, something precise. "
+                "Then, if something warrants a question, ask one. If nothing does, do not ask one.\n\n"
+                "ONE QUESTION PER RESPONSE. No exceptions. "
+                "If you have more than one question, choose the sharper one.\n\n"
+                "WHEN THE USER EXPLICITLY ASKS FOR YOUR INTERPRETATION:\n"
+                "Offer one, briefly and provisionally: \"What I'm hearing is...\" or "
+                "\"It sounds like you might be assuming...\" — then let the user correct you.\n\n"
+                "PROFILE USE:\n"
+                "If something in the notes directly connects to what the user just said, bring it in: "
+                "\"You mentioned something similar once about X — does that feel related?\" "
+                "Do not audit the user against their own history.\n\n"
+                "STRICTLY FORBIDDEN:\n"
+                "- Clinical language: \"attachment style,\" \"avoidant,\" \"core wound,\" \"trauma response\"\n"
+                "- Interpretations the user didn't ask for (\"It sounds like you fear rejection\")\n"
+                "- Multiple questions in a single response\n"
+                "- Hollow validation: \"That's such an important insight\"\n"
+                "- Distancing phrases about being an AI\n"
+                "- Telling the user what they feel or believe — offer it as a question, not a statement\n\n"
+                "LENGTH: 2–4 sentences, plus one question if warranted. "
+                "Do not summarize what the user said before saying something new."
             )
         }
 
@@ -451,20 +477,22 @@ def build_system_prompt(relevant_entries: list[dict], mode: str = "day") -> dict
 # Intro messages
 # ─────────────────────────────────────────────
 
-def get_intro_message(mode: str) -> str:
+def get_intro_message(mode: str, is_returning: bool = False) -> str:
     if mode == "day":
+        if is_returning:
+            return "Hey. What's been on your mind?"
         return (
-            "Hey, I'm Telmi — your personal reflection companion.\n\n"
-            "I'm here to listen. Just tell me what's been on your mind today — "
-            "big or small, good or bad.\n\n"
-            "I remember our past conversations and I'm curious how you're doing."
+            "Hey, I'm Telmi.\n\n"
+            "Just tell me what's been on your mind — big or small, good or bad. "
+            "I'm here to listen."
         )
     else:
+        if is_returning:
+            return "What's been on your mind?"
         return (
-            "Hey, I'm Telmi — let's go a little deeper today.\n\n"
-            "What's been on your mind? Pick something specific — "
-            "a situation, a feeling, a thought you keep coming back to.\n\n"
-            "We'll look at it together."
+            "Hey, I'm Telmi.\n\n"
+            "This mode is for going a little deeper — a specific situation, a thought you keep "
+            "returning to, something you haven't quite worked out. Pick one thing and we'll look at it."
         )
 
 
@@ -486,20 +514,22 @@ def run_save_flow(mode: str):
     )
 
     summary_prompt = (
-        f"Here is today's conversation:\n\n{history_text}\n\n"
-        "Return exactly two things, nothing else:\n\n"
-        "TITLE: a single line, max 8 words, capturing what was on the user's mind today\n"
-        "SUMMARY: written from Telmi's perspective about the USER. "
-        "Write 'You' when referring to the user. Never describe the conversation itself. "
-        "Never mention Telmi. Only what the user brought up and their mood.\n\n"
+        f"Here is the conversation to summarize:\n\n{history_text}\n\n"
+        "Return exactly two things, in this format, nothing else:\n\n"
+        "TITLE: one line, maximum 8 words, capturing the central thing on the user's mind\n"
+        "SUMMARY: 2–4 sentences, written in second person (\"You\"). Focus entirely on the user — "
+        "what they brought up, what they seemed to be feeling or working through, what shifted or didn't. "
+        "This text will be used for semantic search to surface relevant past sessions, so be specific and concrete: "
+        "name topics, emotions, situations, and relationships that were actually mentioned. "
+        "Do not describe the conversation itself. Do not mention Telmi. "
+        "Do not interpret beyond what the user actually expressed.\n\n"
         "RULES:\n"
-        "- Focus entirely on the user, not the exchange\n"
-        "- No meta-commentary like 'the conversation was about'\n"
-        "- No poetry, no life lessons\n"
-        "- If the conversation is very short or contains only greetings, write a minimal honest "
-        "summary of exactly what happened — e.g. 'You stopped by briefly and said hi.' "
-        "Do not invent emotions or assume context that isn't there. Just describe what is literally present.\n"
-        "- Output only TITLE: and SUMMARY: labels, nothing else"
+        "- Write \"You\" when referring to the user\n"
+        "- No meta-commentary (\"the conversation touched on...\", \"the user discussed...\")\n"
+        "- No poetry, no life lessons, no conclusions the user didn't reach themselves\n"
+        "- If the conversation was very short or only a greeting: write a minimal honest summary "
+        "of what was literally there — do not fill in emotions or context that weren't present\n"
+        "- Output only the TITLE: and SUMMARY: lines, nothing else"
     )
     try:
         summary_response = ollama.chat(
@@ -711,10 +741,13 @@ if "download_error" not in st.session_state:
     st.session_state.download_error = None
 if "app_mode" not in st.session_state:
     st.session_state.app_mode = "day"
+if "json_entries" not in st.session_state:
+    st.session_state.json_entries = load_memory_json()
+_is_returning = len(st.session_state.json_entries) > 0
 if "messages_day" not in st.session_state:
-    st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day")}]
+    st.session_state.messages_day = [{"role": "assistant", "content": get_intro_message("day", _is_returning)}]
 if "messages_mind" not in st.session_state:
-    st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind")}]
+    st.session_state.messages_mind = [{"role": "assistant", "content": get_intro_message("mind", _is_returning)}]
 if "already_saved_day" not in st.session_state:
     st.session_state.already_saved_day = False
 if "already_saved_mind" not in st.session_state:
@@ -725,8 +758,6 @@ if "last_saved_mind" not in st.session_state:
     st.session_state.last_saved_mind = None
 if "selected_model" not in st.session_state:
     st.session_state.selected_model = ""
-if "json_entries" not in st.session_state:
-    st.session_state.json_entries = load_memory_json()
 if "cal_year" not in st.session_state:
     st.session_state.cal_year = date.today().year
 if "cal_month" not in st.session_state:
@@ -803,11 +834,11 @@ with st.sidebar:
             st.success("Session saved.")
             if st.button("New Session", use_container_width=True):
                 if mode == "day":
-                    st.session_state.messages_day      = [{"role": "assistant", "content": get_intro_message("day")}]
+                    st.session_state.messages_day      = [{"role": "assistant", "content": get_intro_message("day", is_returning=True)}]
                     st.session_state.already_saved_day = False
                     st.session_state.last_saved_day    = None
                 else:
-                    st.session_state.messages_mind      = [{"role": "assistant", "content": get_intro_message("mind")}]
+                    st.session_state.messages_mind      = [{"role": "assistant", "content": get_intro_message("mind", is_returning=True)}]
                     st.session_state.already_saved_mind = False
                     st.session_state.last_saved_mind    = None
                 st.session_state.model_changed = False

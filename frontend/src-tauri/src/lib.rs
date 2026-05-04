@@ -70,6 +70,7 @@ pub fn run() {
                         }
                     }
                 }
+                std::process::exit(0);
             }
         })
         .run(tauri::generate_context!())

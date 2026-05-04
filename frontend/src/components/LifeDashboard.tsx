@@ -15,17 +15,6 @@ interface Props {
   refreshKey: number;
 }
 
-function streakMessage(n: number): { num: string | null; label: string } {
-  if (n === 0)   return { num: null, label: 'Start today.' };
-  if (n === 1)   return { num: null, label: 'Day one.' };
-  if (n === 7)   return { num: null, label: 'One week straight.' };
-  if (n === 14)  return { num: null, label: 'Two weeks straight.' };
-  if (n === 21)  return { num: null, label: 'Three weeks straight.' };
-  if (n === 30)  return { num: null, label: 'Thirty days. Impressive.' };
-  if (n === 100) return { num: null, label: '100 days. Seriously.' };
-  if (n === 365) return { num: null, label: 'A full year.' };
-  return { num: String(n), label: 'days in a row.' };
-}
 
 function computeStreak(days: CalendarDay[]): number {
   const dates = new Set(days.map((d) => d.date));
@@ -75,7 +64,6 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
   const todayKey = useMemo(() => today.toISOString().slice(0, 10), [today]);
 
   const [calDays, setCalDays] = useState<CalendarDay[]>([]);
-  const [fetchError, setFetchError] = useState(false);
   const [currentMonth, setCurrentMonth] = useState<Date>(
     new Date(today.getFullYear(), today.getMonth(), 1),
   );
@@ -92,10 +80,22 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
 
   useEffect(() => {
     if (!statsOpen) return;
-    fetch(`${API}/stats`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setStats(data as StatsData); })
-      .catch(() => {});
+    let cancelled = false;
+    async function fetchStats(retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const r = await fetch(`${API}/stats`);
+          if (r.ok) {
+            const data = await r.json();
+            if (!cancelled) setStats(data as StatsData);
+            return;
+          }
+        } catch {}
+        await new Promise((res) => setTimeout(res, 800));
+      }
+    }
+    fetchStats();
+    return () => { cancelled = true; };
   }, [statsOpen, refreshKey]);
 
   function statsMouseEnter() {
@@ -123,7 +123,6 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
   }, [statsPinned]);
 
   useEffect(() => {
-    setFetchError(false);
     fetch(`${API}/calendar-data`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -133,7 +132,7 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
         if (!Array.isArray(data)) return;
         setCalDays(data as CalendarDay[]);
       })
-      .catch(() => setFetchError(true));
+      .catch(() => {});
   }, [refreshKey]);
 
   // Keep last entry per date (chronological order → last wins)

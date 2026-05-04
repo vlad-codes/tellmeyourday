@@ -142,6 +142,22 @@ body {
   animation: fadeIn 0.18s ease-out both;
 }
 
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  10%  { transform: translateX(0); }
+  90%  { transform: translateX(var(--marquee-distance, -60%)); }
+  100% { transform: translateX(var(--marquee-distance, -60%)); }
+}
+
+.marquee-text {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.marquee-container:hover .marquee-text.overflows {
+  animation: marquee 3s ease-in-out both;
+}
+
 /* ─── Onboarding glass card ──────────────────────────────────────────────── */
 
 .glass-card {

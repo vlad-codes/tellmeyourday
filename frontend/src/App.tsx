@@ -16,6 +16,7 @@ interface StatusResponse {
 }
 
 export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+export type ModelStatus = 'ready' | 'switching' | 'saving';
 
 export default function App() {
   const [appStatus, setAppStatus] = useState<AppStatus>('loading');
@@ -29,6 +30,8 @@ export default function App() {
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
   const [isReturning, setIsReturning] = useState(() => !!localStorage.getItem('telmi_introduced'));
+  const [modelStatus, setModelStatus] = useState<ModelStatus>('ready');
+  const switchingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -86,9 +89,17 @@ export default function App() {
     return () => { unlistenFn?.(); };
   }, [appStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function handleModelChange(model: string) {
+    setSelectedModel(model);
+    setModelStatus('switching');
+    if (switchingTimerRef.current) clearTimeout(switchingTimerRef.current);
+    switchingTimerRef.current = setTimeout(() => setModelStatus('ready'), 2000);
+  }
+
   async function doSave(m: Mode, history: ChatMessage[]): Promise<boolean> {
     if (history.length <= 1) return false;
     setSaveStatus('saving');
+    setModelStatus('saving');
     try {
       const res = await fetch(`${API}/save`, {
         method: 'POST',
@@ -100,12 +111,14 @@ export default function App() {
       localStorage.setItem('telmi_introduced', '1');
       setIsReturning(true);
       setSaveStatus('saved');
+      setModelStatus('ready');
       setCalendarRefreshKey((k) => k + 1);
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500);
       return true;
     } catch {
       setSaveStatus('error');
+      setModelStatus('ready');
       return false;
     }
   }
@@ -144,7 +157,8 @@ export default function App() {
       <Sidebar
         models={models}
         selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
+        onModelChange={handleModelChange}
+        modelStatus={modelStatus}
         mode={mode}
         onModeChange={setMode}
         onOpenArchive={() => setArchiveOpen(true)}

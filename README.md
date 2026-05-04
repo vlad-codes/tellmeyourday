@@ -12,14 +12,6 @@ Telmi is a native macOS companion powered by local AI. Talk about your day, work
 
 ---
 
-## Who Telmi is
-
-Telmi has studied humans. It knows that most people don't need much to live well — usually just clarity, or someone who truly listens. It is warm, calm, and fully on your side. It believes in you even when you don't.
-
-It's not a journaling tool with an AI attached. It's a companion you come back to.
-
----
-
 ## Two modes
 
 **📓 Your Day** — tell Telmi what's been going on. Whatever's on your mind, big or small. Telmi listens and remembers.

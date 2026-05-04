@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChatMessage, Mode, SaveResponse } from './types';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import type { ChatMessage, Mode } from './types';
 import Sidebar from './components/Sidebar';
 import Chat from './components/Chat';
 import ArchiveModal from './components/ArchiveModal';
@@ -13,20 +14,20 @@ interface StatusResponse {
   embedding_ok: boolean;
 }
 
+export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 export default function App() {
   const [appStatus, setAppStatus] = useState<AppStatus>('loading');
   const [models, setModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState('');
   const [mode, setMode] = useState<Mode>('day');
-  const [isSaving, setIsSaving] = useState(false);
-  const [alreadySaved, setAlreadySaved] = useState<Record<Mode, boolean>>({ day: false, mind: false });
-  const [savedResult, setSavedResult] = useState<Record<Mode, SaveResponse | null>>({ day: null, mind: null });
-  const [saveError, setSaveError] = useState<Record<Mode, string | null>>({ day: null, mind: null });
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [sessionKey, setSessionKey] = useState<Record<Mode, number>>({ day: 0, mind: 0 });
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [archiveTimestamp, setArchiveTimestamp] = useState<string | undefined>(undefined);
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+  const [isReturning, setIsReturning] = useState(() => !!localStorage.getItem('telmi_introduced'));
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
@@ -34,8 +35,9 @@ export default function App() {
   }, [isDark]);
 
   const historyRef = useRef<Record<Mode, ChatMessage[]>>({ day: [], mind: [] });
+  const savedRef = useRef<Record<Mode, boolean>>({ day: false, mind: false });
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Poll /status until backend + Ollama are ready
   useEffect(() => {
     if (appStatus === 'ready') return;
     let cancelled = false;
@@ -60,45 +62,64 @@ export default function App() {
     return () => { cancelled = true; };
   }, [appStatus]);
 
-  function handleHistoryChange(m: Mode, history: ChatMessage[]) {
-    historyRef.current[m] = history;
-  }
+  // Tauri close handler — auto-save all modes with unsaved history
+  useEffect(() => {
+    if (appStatus !== 'ready') return;
+    const win = getCurrentWindow();
+    let unlistenFn: (() => void) | null = null;
 
-  async function handleSave() {
-    if (isSaving || alreadySaved[mode]) return;
-    setIsSaving(true);
+    win.onCloseRequested(async (event) => {
+      event.preventDefault();
+      const modes: Mode[] = ['day', 'mind'];
+      for (const m of modes) {
+        const h = historyRef.current[m];
+        if (!savedRef.current[m] && h.length > 1) {
+          await doSave(m, h);
+        }
+      }
+      win.destroy();
+    }).then((fn) => { unlistenFn = fn; });
+
+    return () => { unlistenFn?.(); };
+  }, [appStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function doSave(m: Mode, history: ChatMessage[]): Promise<boolean> {
+    if (history.length <= 1) return false;
+    setSaveStatus('saving');
     try {
       const res = await fetch(`${API}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode,
-          history: historyRef.current[mode],
-          selected_model: selectedModel,
-        }),
+        body: JSON.stringify({ mode: m, history, selected_model: selectedModel }),
       });
-      if (!res.ok) {
-        setSaveError((prev) => ({ ...prev, [mode]: 'Could not save session. Please try again.' }));
-        return;
-      }
-      const result: SaveResponse = await res.json();
-      setSavedResult((prev) => ({ ...prev, [mode]: result }));
-      setAlreadySaved((prev) => ({ ...prev, [mode]: true }));
-      setSaveError((prev) => ({ ...prev, [mode]: null }));
+      if (!res.ok) throw new Error('save failed');
+      savedRef.current[m] = true;
+      localStorage.setItem('telmi_introduced', '1');
+      setIsReturning(true);
+      setSaveStatus('saved');
       setCalendarRefreshKey((k) => k + 1);
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => setSaveStatus('idle'), 2500);
+      return true;
     } catch {
-      setSaveError((prev) => ({ ...prev, [mode]: 'Could not save session. Please try again.' }));
-    } finally {
-      setIsSaving(false);
+      setSaveStatus('error');
+      return false;
     }
   }
 
-  function handleNewSession() {
-    setAlreadySaved((prev) => ({ ...prev, [mode]: false }));
-    setSavedResult((prev) => ({ ...prev, [mode]: null }));
-    setSaveError((prev) => ({ ...prev, [mode]: null }));
-    setSessionKey((prev) => ({ ...prev, [mode]: prev[mode] + 1 }));
+  function handleHistoryChange(m: Mode, history: ChatMessage[]) {
+    historyRef.current[m] = history;
+    savedRef.current[m] = false;
+  }
+
+  async function handleNewSession() {
+    const history = historyRef.current[mode];
+    if (!savedRef.current[mode] && history.length > 1) {
+      await doSave(mode, history);
+    }
+    savedRef.current[mode] = false;
     historyRef.current[mode] = [];
+    setSessionKey((prev) => ({ ...prev, [mode]: prev[mode] + 1 }));
   }
 
   function handleDayClick(timestamp: string) {
@@ -126,6 +147,8 @@ export default function App() {
         onOpenArchive={() => setArchiveOpen(true)}
         onDayClick={handleDayClick}
         calendarRefreshKey={calendarRefreshKey}
+        saveStatus={saveStatus}
+        onNewSession={handleNewSession}
       />
       {archiveOpen && (
         <ArchiveModal
@@ -162,13 +185,8 @@ export default function App() {
           key={`${mode}-${sessionKey[mode]}`}
           mode={mode}
           selectedModel={selectedModel}
-          isSaving={isSaving}
-          alreadySaved={alreadySaved[mode]}
-          savedResult={savedResult[mode]}
-          saveError={saveError[mode]}
+          isReturning={isReturning}
           onHistoryChange={(h) => handleHistoryChange(mode, h)}
-          onSave={handleSave}
-          onNewSession={handleNewSession}
         />
       </main>
     </div>

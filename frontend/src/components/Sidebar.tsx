@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Mode } from '../types';
+import type { SaveStatus } from '../App';
 import LifeDashboard from './LifeDashboard';
 
 interface SidebarProps {
@@ -11,6 +12,8 @@ interface SidebarProps {
   onOpenArchive: () => void;
   onDayClick: (timestamp: string) => void;
   calendarRefreshKey: number;
+  saveStatus: SaveStatus;
+  onNewSession: () => void;
 }
 
 export default function Sidebar({
@@ -22,6 +25,8 @@ export default function Sidebar({
   onOpenArchive,
   onDayClick,
   calendarRefreshKey,
+  saveStatus,
+  onNewSession,
 }: SidebarProps) {
   return (
     <aside className="glass-sidebar w-60 shrink-0 flex flex-col h-full z-10">
@@ -105,6 +110,42 @@ export default function Sidebar({
           </div>
         </div>
 
+      </div>
+
+      {/* New conversation button + save status */}
+      <div className="px-3 pb-2 shrink-0">
+        <button
+          onClick={onNewSession}
+          disabled={saveStatus === 'saving'}
+          className="w-full rounded-xl px-3 py-2 text-[13px] font-medium
+                     flex items-center justify-center gap-2
+                     border transition-all duration-150
+                     disabled:cursor-not-allowed
+                     bg-white/60 dark:bg-white/[0.06]
+                     border-slate-200/80 dark:border-white/[0.08]
+                     text-slate-600 dark:text-slate-300
+                     hover:bg-white/90 dark:hover:bg-white/[0.10]
+                     hover:text-slate-800 dark:hover:text-slate-100
+                     disabled:opacity-50"
+        >
+          {saveStatus === 'saving' ? (
+            <>
+              <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin opacity-60" />
+              Saving…
+            </>
+          ) : saveStatus === 'saved' ? (
+            <>
+              <svg className="w-3.5 h-3.5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
+            </>
+          ) : saveStatus === 'error' ? (
+            <span className="text-red-400">Couldn't save</span>
+          ) : (
+            '+ New conversation'
+          )}
+        </button>
       </div>
 
       {/* Life Dashboard — pinned at bottom */}

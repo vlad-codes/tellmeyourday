@@ -1,42 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { KeyboardEvent } from 'react';
-import type { ChatMessage, Mode, SaveResponse } from '../types';
+import type { ChatMessage, Mode } from '../types';
 import ChatMessageBubble from './ChatMessage';
-
 const API = 'http://localhost:8000';
 
-export const INTRO: Record<Mode, string> = {
-  day:
-    "Hey, I'm Telmi.\n\nJust tell me what's been on your mind — big or small, good or bad. I'm here to listen.",
-  mind:
-    "Hey, I'm Telmi.\n\nThis mode is for going a little deeper — a specific situation, a thought you keep returning to, something you haven't quite worked out. Pick one thing and we'll look at it.",
+const INTRO_FIRST: Record<Mode, string> = {
+  day: "Hey. I'm Telmi.\n\nTell me what's been going on. Whatever's on your mind — I'm here.",
+  mind: "Hey. I'm Telmi.\n\nBring me something you haven't quite worked out. A situation, a decision, something you keep circling. We'll look at it together.",
+};
+
+const INTRO_RETURNING: Record<Mode, string> = {
+  day: "Hey. What's been going on?",
+  mind: "What are you trying to figure out?",
 };
 
 interface ChatProps {
   mode: Mode;
   selectedModel: string;
-  isSaving: boolean;
-  alreadySaved: boolean;
-  savedResult: SaveResponse | null;
-  saveError: string | null;
+  isReturning: boolean;
   onHistoryChange: (history: ChatMessage[]) => void;
-  onSave: () => void;
-  onNewSession: () => void;
 }
 
 export default function Chat({
   mode,
   selectedModel,
-  isSaving,
-  alreadySaved,
-  savedResult,
-  saveError,
+  isReturning,
   onHistoryChange,
-  onSave,
-  onNewSession,
 }: ChatProps) {
-  const initialHistory: ChatMessage[] = [{ role: 'assistant', content: INTRO[mode] }];
+  const intro = isReturning ? INTRO_RETURNING[mode] : INTRO_FIRST[mode];
+  const initialHistory: ChatMessage[] = [{ role: 'assistant', content: intro }];
   const [history, setHistory] = useState<ChatMessage[]>(initialHistory);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -55,7 +48,7 @@ export default function Chat({
   }, [history]);
 
   async function sendMessage(text: string) {
-    if (!text.trim() || isStreaming || alreadySaved) return;
+    if (!text.trim() || isStreaming) return;
     setError(null);
 
     const userMsg: ChatMessage = { role: 'user', content: text.trim() };
@@ -127,13 +120,12 @@ export default function Chat({
     e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
   }
 
-  const inputDisabled = isStreaming || isSaving || alreadySaved;
   const modeLabel = mode === 'day' ? 'Your Day' : 'Your Mind';
   const modeIcon = mode === 'day' ? '📓' : '💭';
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Header — also serves as drag region for the chat-side title bar */}
+      {/* Header */}
       <div
         className="shrink-0 px-6 flex items-center gap-2.5
                    border-b border-slate-200/50 dark:border-white/[0.07]
@@ -162,41 +154,6 @@ export default function Chat({
             );
           })}
 
-          {/* Save result card */}
-          {alreadySaved && savedResult && (
-            <div className="fade-in mt-3 rounded-2xl
-                            bg-white/80 dark:bg-slate-800/60
-                            border border-emerald-200/60 dark:border-emerald-500/20
-                            shadow-sm backdrop-blur-sm p-4 text-[13px]">
-              <p className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400 mb-2.5">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                Session saved
-              </p>
-              <p className="font-semibold text-slate-800 dark:text-slate-100">{savedResult.title}</p>
-              <p className="text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{savedResult.summary}</p>
-              {savedResult.profile_update && (
-                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-white/[0.08]">
-                  <p className="text-[11px] font-semibold text-indigo-500 dark:text-indigo-400 mb-1 uppercase tracking-widest">
-                    Profile updated
-                  </p>
-                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed">{savedResult.profile_update}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {saveError && !alreadySaved && (
-            <div className="fade-in mt-3 rounded-2xl
-                            bg-red-50/80 dark:bg-red-900/20
-                            border border-red-200/60 dark:border-red-700/40
-                            text-red-700 dark:text-red-400 text-[13px] p-3.5 leading-relaxed
-                            backdrop-blur-sm">
-              {saveError}
-            </div>
-          )}
-
           {error && (
             <div className="fade-in mt-3 rounded-2xl
                             bg-red-50/80 dark:bg-red-900/20
@@ -214,7 +171,6 @@ export default function Chat({
       {/* Floating input */}
       <div className="shrink-0 px-4 pb-4 pt-2">
         <div className="max-w-2xl mx-auto">
-
           <div
             className="input-float flex items-end gap-2 rounded-2xl
                        bg-white/90 dark:bg-slate-800/80
@@ -230,14 +186,8 @@ export default function Chat({
               value={input}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
-              disabled={inputDisabled}
-              placeholder={
-                alreadySaved
-                  ? 'Start a new session to continue…'
-                  : mode === 'day'
-                  ? 'How was your day?'
-                  : "What's on your mind?"
-              }
+              disabled={isStreaming}
+              placeholder={mode === 'day' ? 'How was your day?' : "What's on your mind?"}
               className="flex-1 resize-none bg-transparent text-[14px]
                          text-slate-800 dark:text-slate-100
                          placeholder-slate-400 dark:placeholder-slate-500
@@ -247,7 +197,7 @@ export default function Chat({
             />
             <button
               onClick={() => sendMessage(input)}
-              disabled={!input.trim() || inputDisabled}
+              disabled={!input.trim() || isStreaming}
               aria-label="Send"
               className="shrink-0 w-8 h-8 rounded-xl
                          bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700
@@ -263,47 +213,7 @@ export default function Chat({
               </svg>
             </button>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-1.5">
-            {!alreadySaved && (
-              <p className="text-[11px] text-slate-400/70 dark:text-slate-500/70 tracking-tight">
-                Don't forget:
-              </p>
-            )}
-            {alreadySaved ? (
-              <button
-                onClick={onNewSession}
-                className="text-[11px] text-slate-500 dark:text-slate-400
-                           hover:text-slate-700 dark:hover:text-slate-200
-                           border border-slate-300/60 dark:border-white/[0.10]
-                           hover:border-slate-400/60 dark:hover:border-white/[0.18]
-                           rounded px-1.5 py-0.5
-                           transition-all duration-150"
-              >
-                + New session
-              </button>
-            ) : (
-              <button
-                onClick={onSave}
-                disabled={isSaving}
-                className="text-[11px] font-medium text-indigo-500 dark:text-indigo-400
-                           hover:text-indigo-700 dark:hover:text-indigo-300
-                           border border-indigo-300/50 dark:border-indigo-400/25
-                           hover:border-indigo-400/70 dark:hover:border-indigo-400/50
-                           rounded px-1.5 py-0.5
-                           transition-all duration-150
-                           disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isSaving ? (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 border border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin" />
-                    Saving…
-                  </span>
-                ) : (
-                  mode === 'day' ? 'Save Your Day' : 'Save Your Mind'
-                )}
-              </button>
-            )}
-          </div>
+
         </div>
       </div>
     </div>

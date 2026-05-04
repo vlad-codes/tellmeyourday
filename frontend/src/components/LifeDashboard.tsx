@@ -84,7 +84,7 @@ export default function LifeDashboard({ onDayClick, onOpenArchive, refreshKey }:
     async function fetchStats(retries = 3) {
       for (let i = 0; i < retries; i++) {
         try {
-          const r = await fetch(`${API}/stats`);
+          const r = await fetch(`${API}/telmi-stats`);
           if (r.ok) {
             const data = await r.json();
             if (!cancelled) setStats(data as StatsData);

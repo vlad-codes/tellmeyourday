@@ -539,7 +539,7 @@ def get_calendar_data():
     return result
 
 
-@app.get("/stats", response_model=StatsResponse)
+@app.get("/telmi-stats")
 def get_stats():
     entries = load_memory_json()
     valid = [e for e in entries if e.get("timestamp") and e["timestamp"] != "Archive (legacy)"]

@@ -1,6 +1,6 @@
-# Telmi — Local AI Journal
+# Telmi — Your Private AI Companion
 
-*Tell me your day. Tell me your mind.*
+*Tell your day. Work through your mind.*
 
 | Setup | Onboarding | Your Day | Your Mind | Archive |
 | :---: | :---: | :---: | :---: | :---: |
@@ -8,15 +8,23 @@
 
 Your thoughts stay on your machine. No cloud. No subscription. No one reading your diary.
 
-Telmi is a native macOS journaling app powered by local AI. Talk about your day. Work through what's on your mind. Telmi listens, remembers, and gets better at knowing you — without sending a single word to a server.
+Telmi is a native macOS companion powered by local AI. Talk about your day, work through what's on your mind, tell it your secrets. Telmi listens, remembers, and gets better at knowing you — without sending a single word to a server.
 
 ---
 
-## Two modes. One purpose.
+## Who Telmi is
 
-**📓 Tell me your day** — a daily journaling space. Reflect on what happened, what you're feeling, what's next. Telmi asks follow-up questions and builds a running memory of your life over time.
+Telmi has studied humans. It knows that most people don't need much to live well — usually just clarity, or someone who truly listens. It is warm, calm, and fully on your side. It believes in you even when you don't.
 
-**🧠 Tell me your mind** — a deeper mode for working things through. Telmi tracks what matters to you across sessions and refers back to it when relevant. A space to think out loud with something that actually remembers.
+It's not a journaling tool with an AI attached. It's a companion you come back to.
+
+---
+
+## Two modes
+
+**📓 Your Day** — tell Telmi what's been going on. Whatever's on your mind, big or small. Telmi listens and remembers.
+
+**💭 Your Mind** — bring something you haven't quite worked out. A decision, a situation, something you keep circling. Telmi thinks alongside you.
 
 ---
 
@@ -26,7 +34,8 @@ Telmi is a native macOS journaling app powered by local AI. Talk about your day.
 - **No subscription.** No API key. No usage limits. You own the models, you own the data.
 - **Runs on 8 GB RAM.** No GPU required. Works on everyday hardware.
 - **Remembers you.** Past conversations are stored and retrieved — Telmi doesn't start from scratch every time.
-- **Life Dashboard.** A calendar showing every day you've written, streaks, and monthly stats — built into the sidebar.
+- **Auto-saves.** No save button. Start a new conversation or close the app — Telmi remembers automatically.
+- **Life Dashboard.** A calendar showing every day you've talked, streaks, and monthly stats — built into the sidebar.
 - **Open models.** Switch between any model you have installed in Ollama. Upgrade when you want.
 
 ---
@@ -53,11 +62,11 @@ The app detects whether Ollama is running and whether any models are installed. 
 
 **Recommended models by RAM:**
 
-| RAM    | Model            | Size   |
-|--------|------------------|--------|
-| 8 GB   | `llama3.2:3b`    | 2.0 GB |
-| 16 GB  | `llama3.1:8b`    | 4.7 GB |
-| 32 GB+ | `qwen2.5:32b`    | 20 GB  |
+| RAM    | Model            | Size   | Notes |
+|--------|------------------|--------|-------|
+| 8 GB   | `llama3.2:3b`    | 2.0 GB | Good starting point |
+| 16 GB  | `llama3.1:8b`    | 4.7 GB | Noticeably better responses |
+| 32 GB+ | `qwen2.5:32b`    | 20 GB  | Best experience |
 
 **Optional — semantic search** (activates automatically once you have 15+ entries):
 ```bash
@@ -72,22 +81,22 @@ Requirements: [Node.js](https://nodejs.org), [Rust](https://rustup.rs), [Python 
 
 ```bash
 # 1. Clone
-git clone https://github.com/YOUR_USERNAME/telmi.git
-cd telmi
+git clone https://github.com/vlad-codes/telmi-journal.git
+cd telmi-journal
 
-# 2. Python dependencies (for the backend sidecar)
+# 2. Python dependencies
 pip3 install -r requirements.txt
 
 # 3. Build the backend binary
 pyinstaller telmi-backend.spec --distpath frontend/src-tauri/binaries --noconfirm
-# rename to match Tauri's expected name:
-mv frontend/src-tauri/binaries/telmi-backend \
-   frontend/src-tauri/binaries/telmi-backend-aarch64-apple-darwin
 
-# 4. Run in development
-cd frontend
-npm install
-npm run tauri dev
+# 4. Dev mode (two terminals)
+uvicorn api:app --reload          # terminal 1 — backend
+cd frontend && npm run tauri dev  # terminal 2 — app
+
+# 5. Release build
+cd frontend && npm run tauri build
+# DMG output: frontend/src-tauri/target/release/bundle/dmg/
 ```
 
 ---
@@ -96,11 +105,11 @@ npm run tauri dev
 
 All data lives exclusively on your machine:
 
-| File | Contents | Location |
-|------|----------|----------|
-| `memory.json` | Journal entries + chat history | App data directory |
-| `profile.json` | Mind mode notes | App data directory |
-| `chroma_db/` | Vector embeddings for search | App data directory |
+| File | Contents |
+|------|----------|
+| `memory.json` | Conversations + chat history |
+| `profile.json` | Notes Telmi builds about you over time |
+| `chroma_db/` | Vector embeddings for semantic search |
 
 None of these are included in this repository. Telmi never phones home.
 

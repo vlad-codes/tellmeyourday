@@ -1,4 +1,5 @@
 import type { ChatMessage as ChatMessageType } from '../types';
+import telmiAvatar from '../assets/telmi-avatar.svg';
 
 interface Props {
   message: ChatMessageType;
@@ -11,13 +12,12 @@ export default function ChatMessageBubble({ message, isStreaming }: Props) {
   return (
     <div className={`msg-enter flex ${isUser ? 'justify-end' : 'justify-start'} mb-3`}>
       {!isUser && (
-        <div className="w-7 h-7 rounded-full shrink-0 mr-2.5 mt-0.5
-                        bg-gradient-to-br from-indigo-400 to-indigo-600
-                        dark:from-indigo-500 dark:to-indigo-700
-                        flex items-center justify-center
-                        shadow-sm shadow-indigo-500/25 text-[11px] font-bold text-white">
-          T
-        </div>
+        <img
+          src={telmiAvatar}
+          alt="Telmi"
+          className="w-7 h-7 rounded-full shrink-0 mr-2.5 mt-0.5 object-cover
+                     shadow-sm shadow-indigo-500/25"
+        />
       )}
       <div
         className={`max-w-[76%] text-[14px] leading-relaxed
